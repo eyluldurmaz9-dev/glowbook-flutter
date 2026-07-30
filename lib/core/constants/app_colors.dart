@@ -7,11 +7,13 @@ class AppColors {
   static const Color secondaryBackground = Color(0xFFFFF8FB);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceSoft = Color(0xFFFFF8FB);
-  static const Color primary = Color(0xFFEC5A8C);
+  static const Color primary = Color(0xFFFFD1DC);
   static const Color blush = Color(0xFFFFD1DC);
   static const Color petal = Color(0xFFFFF8FB);
   static const Color secondaryPink = Color(0xFFF8BBD0);
   static const Color accentPink = Color(0xFFEC5A8C);
+  static const Color strongAccent = Color(0xFFEC5A8C);
+  static const Color action = Color(0xFFEC5A8C);
   static const Color goldAccent = Color(0xFFD4AF37);
   static const Color goldText = Color(0xFF96751F);
   static const Color primaryText = Color(0xFF30292D);

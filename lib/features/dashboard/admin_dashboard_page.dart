@@ -16,7 +16,7 @@ class AdminDashboardPage extends ConsumerWidget {
     final wide = MediaQuery.sizeOf(context).width >= 900;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFAFC),
+      backgroundColor: AppColors.petal,
       body: SafeArea(
         child: Row(
           children: [
@@ -217,9 +217,9 @@ class _AdminSidebar extends StatelessWidget {
                 label: Text(items[i][0] as String),
                 style: TextButton.styleFrom(
                   foregroundColor:
-                      i == 0 ? AppColors.primary : AppColors.secondaryText,
+                      i == 0 ? AppColors.action : AppColors.secondaryText,
                   backgroundColor:
-                      i == 0 ? const Color(0xFFFFF0F5) : Colors.transparent,
+                      i == 0 ? AppColors.roseTint : Colors.transparent,
                   alignment: Alignment.centerLeft,
                   minimumSize: const Size.fromHeight(44),
                   shape: RoundedRectangleBorder(
@@ -270,7 +270,7 @@ class _ChartPanel extends StatelessWidget {
                             height: values[i] * 1.7,
                             decoration: BoxDecoration(
                               color:
-                                  i == 5 ? AppColors.primary : AppColors.blush,
+                                  i == 5 ? AppColors.action : AppColors.blush,
                               borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(7),
                                 bottom: Radius.circular(3),
@@ -324,9 +324,9 @@ class _SchedulePanel extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF4F7),
+                      color: AppColors.petal,
                       border: const Border(
-                        left: BorderSide(color: AppColors.primary, width: 3),
+                        left: BorderSide(color: AppColors.action, width: 3),
                       ),
                       borderRadius: BorderRadius.circular(10),
                     ),

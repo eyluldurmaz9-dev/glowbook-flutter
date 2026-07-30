@@ -14,14 +14,14 @@ class EmployeePage extends ConsumerWidget {
     return Scaffold(
       appBar: const GlowAppBar(title: 'Personel'),
       body: employees.when(
-        loading: () => const GlowLoading(message: 'Personel yukleniyor'),
+        loading: () => const GlowLoading(message: 'Personel yükleniyor'),
         error: (error, _) => GlowError(
           message: error.toString(),
           onRetry: () => ref.invalidate(employeesProvider),
         ),
         data: (items) {
           if (items.isEmpty) {
-            return const GlowEmptyState(title: 'Personel bulunamadi');
+            return const GlowEmptyState(title: 'Personel bulunamadı');
           }
           return ListView.separated(
             padding: const EdgeInsets.all(20),

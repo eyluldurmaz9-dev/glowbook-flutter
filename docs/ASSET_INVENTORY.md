@@ -31,7 +31,7 @@ Bu dosyalar `artifacts/mockup-sandbox/public/images` altında mevcut JPG görsel
 
 | Kaynak | Dönüşüm | Neden |
 |---|---|---|
-| JPG fotoğraflar | Flutter `assets/images/` altına kopyala ve `pubspec.yaml` içine ekle | Flutter asset bundle içinde kullanılmaları gerekir |
+| JPG fotoğraflar | Flutter `assets/images/` altına kopyalandı ve `pubspec.yaml` içine eklendi | Flutter asset bundle içinde kullanılmaları gerekir |
 | React `imagePath(...)` kullanımı | Flutter `Image.asset(...)` veya network/cache abstraction | React public path Flutter'da çalışmaz |
 | lucide-react ikonları | Material Icons veya Flutter ikon paketi eşlemesi | React ikonları doğrudan kullanılamaz |
 | CSS gradients/shadows | `BoxDecoration`, `LinearGradient`, `BoxShadow` | CSS doğrudan taşınamaz |
@@ -69,7 +69,7 @@ Bu dosyalar görsel UI asset'i değildir veya Flutter uygulamasına doğrudan ta
 
 - Görsel çözünürlükleri bu analizde ölçülmedi; yalnızca dosya varlığı ve byte boyutu kontrol edildi.
 - Görsel lisans/provenance bilgisi repo içinde açıkça belgelenmemiş.
-- Flutter `pubspec.yaml` içinde şu anda bu tasarım assetleri tanımlı değil.
+- Flutter `pubspec.yaml` içinde `assets/images/` tanımlı; eksik olan yalnızca tasarımda referanslanan ama repoda bulunmayan görsellerdir.
 
 ## Varsayımlar
 

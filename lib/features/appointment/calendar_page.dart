@@ -31,7 +31,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
             ),
             const SizedBox(height: 16),
             services.when(
-              loading: () => const GlowLoading(message: 'Hizmetler yukleniyor'),
+              loading: () => const GlowLoading(message: 'Hizmetler yükleniyor'),
               error: (error, _) => GlowError(
                 message: error.toString(),
                 onRetry: () => ref.invalidate(servicesProvider),
@@ -40,7 +40,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                 final firstServiceId =
                     items.isEmpty ? null : items.first['serviceId'];
                 if (firstServiceId is! int) {
-                  return const GlowEmptyState(title: 'Musaitlik bulunamadi');
+                  return const GlowEmptyState(title: 'Müsaitlik bulunamadı');
                 }
                 final date = _selectedDate.toIso8601String().split('T').first;
                 final slots = ref.watch(
@@ -50,11 +50,11 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                 );
                 return slots.when(
                   loading: () =>
-                      const GlowLoading(message: 'Saatler yukleniyor'),
+                      const GlowLoading(message: 'Saatler yükleniyor'),
                   error: (error, _) => GlowError(message: error.toString()),
                   data: (items) {
                     if (items.isEmpty) {
-                      return const GlowEmptyState(title: 'Musait saat yok');
+                      return const GlowEmptyState(title: 'Müsait saat yok');
                     }
                     return Column(
                       children: [

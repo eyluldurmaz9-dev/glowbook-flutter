@@ -157,13 +157,13 @@ Risk:
 
 ## Eksikler
 
-- Asset bundle tanımı yok.
+- Asset bundle tanımı tamamlandı.
 - Salon/lokasyon/harita backend sözleşmesi yok.
 - Admin rapor/ciro endpointleri yok.
 - Separate guest login route yok.
 - Separate employee login route yok.
-- Waiting list UI yok.
-- Working hours/holidays UI yok.
+- Waiting list servis/provider bağlantısı hazır; tam UI sonraki ekran uygulama aşamasında yapılmalı.
+- Working hours/holidays servis/provider bağlantısı hazır; tam UI sonraki ekran uygulama aşamasında yapılmalı.
 - Service category modeli yok.
 - Employee image/rating backend alanları yok.
 

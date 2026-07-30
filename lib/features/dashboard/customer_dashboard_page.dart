@@ -98,8 +98,8 @@ class _CustomerStats extends ConsumerWidget {
                   ),
                   const GlowPill(
                     label: 'Aktif',
-                    color: Color(0xFF96751F),
-                    background: Color(0xFFFFF7DF),
+                    color: AppColors.goldText,
+                    background: AppColors.goldTint,
                   ),
                 ],
               ),
@@ -123,8 +123,8 @@ class _CustomerStats extends ConsumerWidget {
                 child: const LinearProgressIndicator(
                   value: .33,
                   minHeight: 8,
-                  backgroundColor: Color(0xFFF7E9EE),
-                  color: AppColors.primary,
+                  backgroundColor: AppColors.softBorder,
+                  color: AppColors.action,
                 ),
               ),
               const SizedBox(height: 8),
@@ -180,7 +180,7 @@ class _MiniStat extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: highlight ? AppColors.primary : AppColors.primaryText,
+                color: highlight ? AppColors.action : AppColors.primaryText,
               ),
         ),
         Text(label, style: Theme.of(context).textTheme.labelSmall),

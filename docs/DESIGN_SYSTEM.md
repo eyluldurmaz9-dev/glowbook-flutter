@@ -42,13 +42,17 @@ React/Tailwind kodu Flutter'a doğrudan kopyalanmamalıdır. Tasarım tokenları
 
 Flutter'daki mevcut karşılıklar:
 
-- `AppColors.primary = #EC5A8C`
+- `AppColors.primary = #FFD1DC`
 - `AppColors.blush = #FFD1DC`
 - `AppColors.petal = #FFF8FB`
+- `AppColors.action = #EC5A8C`
+- `AppColors.strongAccent = #EC5A8C`
 - `AppColors.primaryText = #30292D`
 - `AppColors.secondaryText = #82757B`
 - `AppColors.border = #F1E8EC`
 - `AppColors.goldAccent = #D4AF37`
+
+Not: `#FFD1DC` marka ana rengi olarak tutulur. Butonlar, aktif tablar ve metin kontrastı gerektiren aksiyonlar erişilebilirlik için `AppColors.action` / `#EC5A8C` kullanır.
 
 ## Tipografi
 

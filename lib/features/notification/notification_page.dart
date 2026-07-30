@@ -88,7 +88,7 @@ class NotificationPage extends ConsumerWidget {
                                               width: 7,
                                               height: 7,
                                               decoration: const BoxDecoration(
-                                                color: AppColors.primary,
+                                                color: AppColors.action,
                                                 shape: BoxShape.circle,
                                               ),
                                             ),

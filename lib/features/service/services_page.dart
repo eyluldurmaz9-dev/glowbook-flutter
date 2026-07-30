@@ -131,7 +131,7 @@ class _ServiceRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(15),
               ),
               child: const Icon(Icons.spa_outlined,
-                  color: AppColors.primary, size: 34),
+                  color: AppColors.action, size: 34),
             ),
             const SizedBox(width: 13),
             Expanded(
@@ -158,8 +158,8 @@ class _ServiceRow extends StatelessWidget {
                       const SizedBox(width: 6),
                       const GlowPill(
                         label: 'Ödeme salonda',
-                        color: Color(0xFF4E8A71),
-                        background: Color(0xFFEDF7F1),
+                        color: AppColors.successDesign,
+                        background: AppColors.greenTint,
                       ),
                     ],
                   ),
@@ -175,9 +175,9 @@ class _ServiceRow extends StatelessWidget {
                   style: Theme.of(context)
                       .textTheme
                       .labelSmall
-                      ?.copyWith(color: AppColors.primary),
+                      ?.copyWith(color: AppColors.action),
                 ),
-                const Icon(Icons.chevron_right, color: AppColors.primary),
+                const Icon(Icons.chevron_right, color: AppColors.action),
               ],
             ),
           ],

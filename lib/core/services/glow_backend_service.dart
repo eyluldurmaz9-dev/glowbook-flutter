@@ -74,7 +74,7 @@ class GlowBackendService {
   Future<AuthSession> refresh() async {
     final refreshToken = await _storage.getRefreshToken();
     if (refreshToken == null || refreshToken.isEmpty) {
-      throw const ApiException('Refresh token bulunamadi.');
+      throw const ApiException('Refresh token bulunamadı.');
     }
     return _authPost('/api/auth/refresh', {'refreshToken': refreshToken});
   }
@@ -309,6 +309,59 @@ class GlowBackendService {
     return _patchMap('/api/notifications/$notificationId/read', null);
   }
 
+  Future<List<Map<String, dynamic>>> getWorkingHours() {
+    return _getList('/api/catalog/working-hours');
+  }
+
+  Future<Map<String, dynamic>> createWorkingHour(Map<String, dynamic> payload) {
+    return _postMap('/api/admin/working-hours', payload);
+  }
+
+  Future<Map<String, dynamic>> updateWorkingHour(
+    int workingHourId,
+    Map<String, dynamic> payload,
+  ) {
+    return _putMap('/api/admin/working-hours/$workingHourId', payload);
+  }
+
+  Future<List<Map<String, dynamic>>> getHolidays({
+    required String startDate,
+    required String endDate,
+  }) {
+    return _getList(
+      '/api/catalog/holidays',
+      queryParameters: {'startDate': startDate, 'endDate': endDate},
+    );
+  }
+
+  Future<Map<String, dynamic>> createHoliday(Map<String, dynamic> payload) {
+    return _postMap('/api/admin/holidays', payload);
+  }
+
+  Future<Map<String, dynamic>> createWaitingListRecord(
+    Map<String, dynamic> payload,
+  ) {
+    return _postMap('/api/waiting-list', payload);
+  }
+
+  Future<List<Map<String, dynamic>>> getActiveWaitingList() {
+    return _getList('/api/waiting-list');
+  }
+
+  Future<List<Map<String, dynamic>>> getCustomerWaitingList(int customerId) {
+    return _getList('/api/waiting-list/customer/$customerId');
+  }
+
+  Future<Map<String, dynamic>> cancelWaitingListRecord(int waitingListId) {
+    return _patchMap('/api/waiting-list/$waitingListId/cancel', null);
+  }
+
+  Future<Map<String, dynamic>> markWaitingListRecordConverted(
+    int waitingListId,
+  ) {
+    return _patchMap('/api/waiting-list/$waitingListId/converted', null);
+  }
+
   Future<Map<String, dynamic>?> getProfile() async {
     final session = await currentSession();
     if (session == null) {
@@ -332,7 +385,7 @@ class GlowBackendService {
         ));
     final session = AuthSession.fromJson(data);
     if (session.token.isEmpty) {
-      throw const ApiException('Backend token dondurmedi.');
+      throw const ApiException('Backend token döndürmedi.');
     }
     await _storage.saveSession(
       accessToken: session.token,

@@ -59,7 +59,7 @@ class GlowButton extends StatelessWidget {
           onPressed: enabled ? onPressed : null,
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.roseTint,
-            foregroundColor: AppColors.primary,
+            foregroundColor: AppColors.action,
             minimumSize: minimumSize,
             padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 13),
             shape: RoundedRectangleBorder(
@@ -466,7 +466,7 @@ class GlowLoading extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(color: AppColors.primary),
+            const CircularProgressIndicator(color: AppColors.action),
             if (message != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(message!, style: Theme.of(context).textTheme.bodyMedium),
@@ -789,7 +789,7 @@ class _GlowNavigationButton extends StatelessWidget {
               children: [
                 Icon(
                   item.icon,
-                  color: selected ? AppColors.primary : AppColors.secondaryText,
+                  color: selected ? AppColors.action : AppColors.secondaryText,
                 ),
                 if (!compact) ...[
                   const SizedBox(width: AppSpacing.md),
@@ -799,7 +799,7 @@ class _GlowNavigationButton extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                             color: selected
-                                ? AppColors.primary
+                                ? AppColors.action
                                 : AppColors.primaryText,
                           ),
                     ),
@@ -892,7 +892,7 @@ class GlowMark extends StatelessWidget {
           bottomLeft: Radius.circular(AppRadius.xs),
         ),
       ),
-      child: Icon(icon, color: AppColors.primary, size: size * .52),
+      child: Icon(icon, color: AppColors.action, size: size * .52),
     );
   }
 }
@@ -977,7 +977,7 @@ class GlowEyebrow extends StatelessWidget {
     return Text(
       text.toUpperCase(),
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.primary,
+            color: AppColors.action,
             letterSpacing: .9,
           ),
     );
@@ -988,7 +988,7 @@ class GlowPill extends StatelessWidget {
   const GlowPill({
     super.key,
     required this.label,
-    this.color = AppColors.primary,
+    this.color = AppColors.action,
     this.background = AppColors.roseTint,
     this.icon,
   });
@@ -1284,7 +1284,7 @@ class GlowAppointmentCard extends StatelessWidget {
               Text(
                 time,
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: AppColors.primary,
+                      color: AppColors.action,
                     ),
               ),
               if (status != null) ...[
@@ -1392,7 +1392,7 @@ class GlowNotificationTile extends StatelessWidget {
                   Text(
                     time!,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColors.primary,
+                          color: AppColors.action,
                         ),
                   ),
                 ],
@@ -1431,7 +1431,7 @@ class GlowAvatar extends StatelessWidget {
             ? Text(
                 initial,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.primary,
+                      color: AppColors.action,
                     ),
               )
             : null,
@@ -1466,12 +1466,12 @@ class GlowAssetThumb extends StatelessWidget {
           height: size,
           color: AppColors.petal,
           child: imageAsset == null
-              ? Icon(icon, color: AppColors.primary)
+              ? Icon(icon, color: AppColors.action)
               : Image.asset(
                   imageAsset!,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
-                    return Icon(icon, color: AppColors.primary);
+                    return Icon(icon, color: AppColors.action);
                   },
                 ),
         ),

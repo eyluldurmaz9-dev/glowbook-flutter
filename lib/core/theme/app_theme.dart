@@ -11,7 +11,7 @@ class AppTheme {
     final base = ThemeData(useMaterial3: true, brightness: Brightness.light);
     const colorScheme = ColorScheme(
       brightness: Brightness.light,
-      primary: AppColors.primary,
+      primary: AppColors.action,
       onPrimary: AppColors.white,
       secondary: AppColors.secondaryPink,
       onSecondary: AppColors.primaryText,
@@ -51,7 +51,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: AppColors.action,
           foregroundColor: AppColors.white,
           disabledBackgroundColor: AppColors.border,
           disabledForegroundColor: AppColors.secondaryText,
@@ -66,7 +66,7 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
+          foregroundColor: AppColors.action,
           minimumSize:
               const Size(AppSpacing.touchTarget, AppSpacing.touchTarget),
           padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 13),
@@ -79,7 +79,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
+          foregroundColor: AppColors.action,
           minimumSize:
               const Size(AppSpacing.touchTarget, AppSpacing.touchTarget),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -147,13 +147,13 @@ class AppTheme {
           return GoogleFonts.dmSans(
             fontSize: 12,
             fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-            color: selected ? AppColors.primary : AppColors.secondaryText,
+            color: selected ? AppColors.action : AppColors.secondaryText,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? AppColors.primary : AppColors.secondaryText,
+            color: selected ? AppColors.action : AppColors.secondaryText,
           );
         }),
       ),

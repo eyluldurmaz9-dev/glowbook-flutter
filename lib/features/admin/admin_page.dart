@@ -15,7 +15,7 @@ class AdminPage extends ConsumerWidget {
     final employees = ref.watch(employeesProvider);
 
     return Scaffold(
-      appBar: const GlowAppBar(title: 'Yonetici Paneli'),
+      appBar: const GlowAppBar(title: 'Yönetici Paneli'),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -30,7 +30,7 @@ class AdminPage extends ConsumerWidget {
             value: services.when(
               data: (items) => '${items.length} hizmet',
               error: (error, _) => error.toString(),
-              loading: () => 'Yukleniyor',
+              loading: () => 'Yükleniyor',
             ),
           ),
           const SizedBox(height: 12),
@@ -39,7 +39,7 @@ class AdminPage extends ConsumerWidget {
             value: employees.when(
               data: (items) => '${items.length} personel',
               error: (error, _) => error.toString(),
-              loading: () => 'Yukleniyor',
+              loading: () => 'Yükleniyor',
             ),
           ),
         ],

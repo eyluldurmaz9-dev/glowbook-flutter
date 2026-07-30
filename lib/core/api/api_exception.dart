@@ -9,7 +9,7 @@ class ApiException implements Exception {
   factory ApiException.fromDio(DioException error) {
     final response = error.response;
     final data = response?.data;
-    var message = 'Sunucuya baglanirken bir sorun olustu.';
+    var message = 'Sunucuya bağlanırken bir sorun oluştu.';
 
     if (data is Map<String, dynamic>) {
       final responseMessage = data['message'];
@@ -19,9 +19,9 @@ class ApiException implements Exception {
     } else if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.sendTimeout) {
-      message = 'Istek zaman asimina ugradi.';
+      message = 'İstek zaman aşımına uğradı.';
     } else if (error.type == DioExceptionType.connectionError) {
-      message = 'Backend sunucusuna ulasilamadi.';
+      message = 'Backend sunucusuna ulaşılamadı.';
     }
 
     return ApiException(message, statusCode: response?.statusCode);

@@ -65,7 +65,7 @@ class ProfilePage extends ConsumerWidget {
                           radius: 30,
                           backgroundColor: AppColors.blush,
                           child: Icon(Icons.person_outline,
-                              color: AppColors.primary),
+                              color: AppColors.action),
                         ),
                         const SizedBox(width: 14),
                         Expanded(

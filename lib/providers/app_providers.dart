@@ -77,6 +77,13 @@ final notificationsProvider = FutureProvider.autoDispose
   return ref.watch(glowBackendServiceProvider).getNotifications(customerId);
 });
 
+final unreadNotificationsProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, int>((ref, customerId) {
+  return ref
+      .watch(glowBackendServiceProvider)
+      .getUnreadNotifications(customerId);
+});
+
 final employeesProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>(
   (ref) => ref.watch(glowBackendServiceProvider).getEmployees(),
@@ -100,6 +107,31 @@ final availableSlotsProvider = FutureProvider.autoDispose
       );
 });
 
+final workingHoursProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+  return ref.watch(glowBackendServiceProvider).getWorkingHours();
+});
+
+final holidaysProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, DateRangeQuery>((ref, query) {
+  return ref.watch(glowBackendServiceProvider).getHolidays(
+        startDate: query.startDate,
+        endDate: query.endDate,
+      );
+});
+
+final activeWaitingListProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+  return ref.watch(glowBackendServiceProvider).getActiveWaitingList();
+});
+
+final customerWaitingListProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, int>((ref, customerId) {
+  return ref
+      .watch(glowBackendServiceProvider)
+      .getCustomerWaitingList(customerId);
+});
+
 final appLoadingProvider = StateProvider<bool>((ref) => false);
 
 class AvailableSlotsQuery {
@@ -117,6 +149,23 @@ class AvailableSlotsQuery {
 
   @override
   int get hashCode => Object.hash(serviceId, date);
+}
+
+class DateRangeQuery {
+  const DateRangeQuery({required this.startDate, required this.endDate});
+
+  final String startDate;
+  final String endDate;
+
+  @override
+  bool operator ==(Object other) {
+    return other is DateRangeQuery &&
+        other.startDate == startDate &&
+        other.endDate == endDate;
+  }
+
+  @override
+  int get hashCode => Object.hash(startDate, endDate);
 }
 
 class AuthController extends StateNotifier<AsyncValue<AuthSession?>> {

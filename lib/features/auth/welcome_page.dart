@@ -96,7 +96,7 @@ class WelcomePage extends StatelessWidget {
                       ],
                     ),
                     child: const Icon(Icons.spa_outlined,
-                        color: AppColors.primary, size: 96),
+                        color: AppColors.action, size: 96),
                   ),
                 ),
               ];

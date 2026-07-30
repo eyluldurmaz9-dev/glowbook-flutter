@@ -96,8 +96,8 @@ class _ServicePackages extends ConsumerWidget {
                         ),
                         const GlowPill(
                           label: 'Aktif',
-                          color: Color(0xFF96751F),
-                          background: Color(0xFFFFF7DF),
+                          color: AppColors.goldText,
+                          background: AppColors.goldTint,
                         ),
                       ],
                     ),
@@ -120,7 +120,7 @@ class _ServicePackages extends ConsumerWidget {
                           '${item['price'] ?? '-'} TL',
                           style:
                               Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    color: AppColors.primary,
+                                    color: AppColors.action,
                                   ),
                         ),
                       ],

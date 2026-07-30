@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../core/navigation/app_navigation.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/widgets/glow_widgets.dart';
@@ -61,8 +62,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    GlowSnackBar.showError(context, message);
   }
 
   @override
@@ -75,7 +75,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.white, Color(0xFFFFF4F8)],
+            colors: [AppColors.white, AppColors.petal],
           ),
         ),
         child: SafeArea(

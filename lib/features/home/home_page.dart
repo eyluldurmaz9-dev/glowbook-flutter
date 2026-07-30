@@ -107,7 +107,7 @@ class _HeroCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [AppColors.petal, AppColors.white],
         ),
-        border: Border.all(color: const Color(0xFFF9E8EF)),
+        border: Border.all(color: AppColors.softBorder),
         borderRadius: BorderRadius.circular(25),
       ),
       child: Column(
@@ -145,12 +145,12 @@ class _HeroCard extends StatelessWidget {
             width: double.infinity,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFFFFD1DC), Color(0xFFFFF8FB)],
+                colors: [AppColors.primary, AppColors.petal],
               ),
             ),
             child: const Icon(
               Icons.spa_outlined,
-              color: AppColors.primary,
+              color: AppColors.action,
               size: 64,
             ),
           ),
@@ -274,8 +274,8 @@ class _HomeServiceTile extends StatelessWidget {
                       const SizedBox(width: 6),
                       const GlowPill(
                         label: 'Ödeme salonda',
-                        color: Color(0xFF4E8A71),
-                        background: Color(0xFFEDF7F1),
+                        color: AppColors.successDesign,
+                        background: AppColors.greenTint,
                       ),
                     ],
                   ),
@@ -283,7 +283,7 @@ class _HomeServiceTile extends StatelessWidget {
               ),
             ),
             const Icon(Icons.favorite_border,
-                color: AppColors.primary, size: 18),
+                color: AppColors.action, size: 18),
           ],
         ),
       ),
@@ -309,7 +309,7 @@ class _ServiceThumb extends StatelessWidget {
         child: Text(
           label.characters.first.toUpperCase(),
           style: const TextStyle(
-            color: AppColors.primary,
+            color: AppColors.action,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -335,7 +335,7 @@ class _SalonCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(15),
             ),
             child: const Icon(Icons.storefront_outlined,
-                color: AppColors.primary, size: 34),
+                color: AppColors.action, size: 34),
           ),
           const SizedBox(width: 11),
           Expanded(
