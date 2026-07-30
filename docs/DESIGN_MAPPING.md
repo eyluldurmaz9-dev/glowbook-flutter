@@ -40,6 +40,7 @@ Aktif route'lar:
 | `/welcome` | `features/auth/welcome_page.dart` |
 | `/login` | `features/auth/login_page.dart` |
 | `/register` | `features/auth/register_page.dart` |
+| `/forgot-password` | `features/auth/forgot_password_page.dart` |
 | `/home` | `features/home/home_page.dart` |
 | `/services` | `features/service/services_page.dart` |
 | `/services/:serviceId` | `features/service/service_detail_page.dart` |
@@ -65,6 +66,7 @@ Aktif route'lar:
 | Employee Login | `EmployeeLogin.tsx` | `LoginPage` | `/login` | Kısmi. Tasarımda ayrı personel login, Flutter'da rol segmenti. |
 | Guest Login | `GuestLogin.tsx` | `LoginPage` içindeki misafir geçişi / `ServicesPage` | `/login`, `/services` | Kısmi. Backend misafir auth gerektirmez, ayrı route yok. |
 | Register / Üye Ol | Prompt ve auth kart pattern'i | `RegisterPage` | `/register` | Eşleşiyor. |
+| Forgot Password | Tasarım auth pattern'i | `ForgotPasswordPage` | `/forgot-password` | Backend endpoint yok; sahte başarı yerine bilgilendirme ekranı var. |
 | Customer Home | `Home.tsx` | `HomePage` | `/home` | Eşleşiyor. |
 | Services | `Services.tsx` | `ServicesPage` | `/services` | Eşleşiyor. |
 | Service Detail bottom sheet | `Services.tsx` seçili hizmet modalı | `ServiceDetailPage` | `/services/:serviceId` | Flutter ayrı route kullanıyor. |
@@ -77,8 +79,8 @@ Aktif route'lar:
 
 ## Tasarımda Olup Flutter'da Eksik veya Kısmi Olan Ekranlar
 
-- Ayrı `GuestLogin` route'u yok. Flutter'da misafir olarak hizmetlere geçiş var.
-- Ayrı `EmployeeLogin` route'u yok. Flutter'da `LoginPage` rol segmentiyle çözüyor.
+- Ayrı `GuestLogin` route'u yok. Flutter'da `/login?mode=guest` ile misafir devam ekranı ve hizmetlere geçiş var.
+- Ayrı `EmployeeLogin` route'u yok. Flutter'da `/login?role=EMPLOYEE` ve rol segmentiyle çözüyor.
 - Landing Page'in tam web bölümleri eksik: desktop nav, trust strip, service mosaic, quote, CTA, footer.
 - Laser Hair Removal popup detayları eksik: `2 Bölge`, `3 Bölge`, `5 Bölge`, `Tüm Vücut`, `6/8/10/12 Seans`.
 - Skin Care, Nail Services, Eyebrows & Eyelashes kategori detay ekranları ayrı route olarak yok; mevcut `/services` kategori chip seviyesinde.

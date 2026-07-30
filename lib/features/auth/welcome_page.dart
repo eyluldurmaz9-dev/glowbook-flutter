@@ -52,15 +52,28 @@ class WelcomePage extends StatelessWidget {
                         runSpacing: 10,
                         children: [
                           GlowButton(
-                            label: 'Randevu Oluştur',
+                            label: 'Üye Girişi',
                             icon: Icons.arrow_forward,
                             onPressed: () =>
                                 AppNavigation.go(context, AppRoutes.login),
                           ),
-                          OutlinedButton(
-                            onPressed: () =>
-                                AppNavigation.go(context, AppRoutes.services),
-                            child: const Text('Hizmetleri Keşfet'),
+                          GlowButton(
+                            label: 'Personel Girişi',
+                            icon: Icons.badge_outlined,
+                            variant: GlowButtonVariant.outlined,
+                            onPressed: () => AppNavigation.go(
+                              context,
+                              '${AppRoutes.login}?role=EMPLOYEE',
+                            ),
+                          ),
+                          GlowButton(
+                            label: 'Misafir Devam',
+                            icon: Icons.spa_outlined,
+                            variant: GlowButtonVariant.secondary,
+                            onPressed: () => AppNavigation.go(
+                              context,
+                              '${AppRoutes.login}?mode=guest',
+                            ),
                           ),
                         ],
                       ),
@@ -100,9 +113,14 @@ class WelcomePage extends StatelessWidget {
                   ),
                 ),
               ];
-              return wide
-                  ? Row(children: content)
-                  : Column(children: content.reversed.toList());
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: wide
+                      ? Row(children: content)
+                      : Column(children: content.reversed.toList()),
+                ),
+              );
             },
           ),
         ),

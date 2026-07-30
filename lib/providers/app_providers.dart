@@ -171,7 +171,7 @@ class DateRangeQuery {
 class AuthController extends StateNotifier<AsyncValue<AuthSession?>> {
   AuthController(this._backend) : super(const AsyncValue.loading());
 
-  final GlowBackendService _backend;
+  final AuthBackend _backend;
 
   Future<void> loadSession() async {
     state = const AsyncValue.loading();

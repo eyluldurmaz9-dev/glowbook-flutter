@@ -37,12 +37,33 @@ class AuthSession {
   }
 }
 
-class GlowBackendService {
+abstract class AuthBackend {
+  Future<AuthSession?> currentSession();
+
+  Future<AuthSession> login({
+    required String username,
+    required String password,
+    String role = 'CUSTOMER',
+  });
+
+  Future<AuthSession> register({
+    required String firstName,
+    required String lastName,
+    required String phone,
+    required String password,
+    String? email,
+  });
+
+  Future<void> logout();
+}
+
+class GlowBackendService implements AuthBackend {
   GlowBackendService(this._api, this._storage);
 
   final ApiService _api;
   final SecureStorageService _storage;
 
+  @override
   Future<AuthSession> login({
     required String username,
     required String password,
@@ -55,6 +76,7 @@ class GlowBackendService {
     });
   }
 
+  @override
   Future<AuthSession> register({
     required String firstName,
     required String lastName,
@@ -79,8 +101,10 @@ class GlowBackendService {
     return _authPost('/api/auth/refresh', {'refreshToken': refreshToken});
   }
 
+  @override
   Future<void> logout() => _storage.clear();
 
+  @override
   Future<AuthSession?> currentSession() async {
     final token = await _storage.getAccessToken();
     if (token == null || token.isEmpty) {

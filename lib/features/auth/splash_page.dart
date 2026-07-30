@@ -25,13 +25,31 @@ class _SplashPageState extends ConsumerState<SplashPage> {
     _navigationTimer = Timer(const Duration(milliseconds: 900), _openNextPage);
   }
 
-  void _openNextPage() {
+  Future<void> _openNextPage() async {
     if (!mounted) return;
-    final session = ref.read(authControllerProvider).valueOrNull;
+    var authState = ref.read(authControllerProvider);
+    if (authState is AsyncLoading) {
+      await ref.read(authControllerProvider.notifier).loadSession();
+      authState = ref.read(authControllerProvider);
+    }
+    if (!mounted) return;
+    final session = authState.asData?.value;
     AppNavigation.go(
       context,
-      session == null ? AppRoutes.welcome : AppRoutes.home,
+      session == null ? AppRoutes.welcome : _routeForRole(session.role),
     );
+  }
+
+  String _routeForRole(String? role) {
+    switch (role?.toUpperCase()) {
+      case 'ADMIN':
+        return AppRoutes.admin;
+      case 'EMPLOYEE':
+        return AppRoutes.employeeDashboard;
+      case 'CUSTOMER':
+      default:
+        return AppRoutes.home;
+    }
   }
 
   @override

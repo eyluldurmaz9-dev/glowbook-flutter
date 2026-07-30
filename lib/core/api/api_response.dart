@@ -2,12 +2,14 @@ import 'api_exception.dart';
 
 T unwrapApiData<T>(dynamic responseData) {
   if (responseData is Map<String, dynamic> &&
-      responseData.containsKey('success') &&
-      responseData.containsKey('data')) {
+      responseData.containsKey('success')) {
     if (responseData['success'] == false) {
       throw ApiException(
-        responseData['message']?.toString() ?? 'Islem basarisiz oldu.',
+        responseData['message']?.toString() ?? 'İşlem başarısız oldu.',
       );
+    }
+    if (!responseData.containsKey('data')) {
+      return responseData as T;
     }
     return responseData['data'] as T;
   }

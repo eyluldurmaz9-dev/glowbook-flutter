@@ -152,6 +152,8 @@ class GlowTextField extends StatefulWidget {
     this.textInputAction,
     this.validator,
     this.onChanged,
+    this.onFieldSubmitted,
+    this.focusNode,
     this.enabled = true,
     this.autofillHints,
   });
@@ -165,6 +167,8 @@ class GlowTextField extends StatefulWidget {
   final TextInputAction? textInputAction;
   final String? Function(String?)? validator;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onFieldSubmitted;
+  final FocusNode? focusNode;
   final bool enabled;
   final Iterable<String>? autofillHints;
 
@@ -183,11 +187,13 @@ class _GlowTextFieldState extends State<GlowTextField> {
       label: widget.label,
       child: TextFormField(
         controller: widget.controller,
+        focusNode: widget.focusNode,
         obscureText: _obscured,
         keyboardType: widget.keyboardType,
         textInputAction: widget.textInputAction,
         validator: widget.validator,
         onChanged: widget.onChanged,
+        onFieldSubmitted: widget.onFieldSubmitted,
         enabled: widget.enabled,
         autofillHints: widget.autofillHints,
         decoration: InputDecoration(
@@ -219,22 +225,28 @@ class GlowPasswordField extends StatelessWidget {
     this.controller,
     this.validator,
     this.textInputAction,
+    this.focusNode,
+    this.onFieldSubmitted,
   });
 
   final String label;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
   final TextInputAction? textInputAction;
+  final FocusNode? focusNode;
+  final ValueChanged<String>? onFieldSubmitted;
 
   @override
   Widget build(BuildContext context) {
     return GlowTextField(
       label: label,
       controller: controller,
+      focusNode: focusNode,
       obscureText: true,
       prefixIcon: Icons.lock_outline,
       validator: validator,
       textInputAction: textInputAction,
+      onFieldSubmitted: onFieldSubmitted,
       autofillHints: const [AutofillHints.password],
     );
   }
