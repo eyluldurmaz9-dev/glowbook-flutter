@@ -16,6 +16,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passCtrl = TextEditingController();
 
   @override
+  void dispose() {
+    _phoneCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authStateProvider);
     return Scaffold(
@@ -37,6 +44,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       final ok = await ref
                           .read(authStateProvider.notifier)
                           .login(_phoneCtrl.text.trim(), _passCtrl.text.trim());
+                      if (!context.mounted) {
+                        return;
+                      }
                       if (ok) {
                         context.go('/home');
                       } else {

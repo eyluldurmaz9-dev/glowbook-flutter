@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../core/config/api_config.dart';
 import 'token_storage.dart';
 
 class ApiClient {
@@ -10,8 +11,9 @@ class ApiClient {
       : dio = Dio(
           BaseOptions(
             baseUrl: baseUrl,
-            connectTimeout: const Duration(seconds: 5),
-            receiveTimeout: const Duration(seconds: 5),
+            connectTimeout: ApiConfig.connectTimeout,
+            receiveTimeout: ApiConfig.receiveTimeout,
+            sendTimeout: ApiConfig.sendTimeout,
           ),
         );
 

@@ -46,8 +46,7 @@ class _HomeCard extends StatelessWidget {
   final String label;
   final String route;
 
-  const _HomeCard({required this.label, required this.route, Key? key})
-      : super(key: key);
+  const _HomeCard({required this.label, required this.route});
 
   @override
   Widget build(BuildContext context) {

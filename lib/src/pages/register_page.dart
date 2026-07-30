@@ -16,6 +16,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _ctrlPass = TextEditingController();
 
   @override
+  void dispose() {
+    _ctrlUser.dispose();
+    _ctrlPass.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authStateProvider);
     return Scaffold(
@@ -40,6 +47,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       };
                       final resp =
                           await ref.read(authServiceProvider).register(payload);
+                      if (!context.mounted) {
+                        return;
+                      }
                       if (resp['success'] == true || resp['data'] != null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Registered')));

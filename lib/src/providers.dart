@@ -5,16 +5,15 @@ import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'state/auth_state.dart';
 import 'routes/app_router.dart';
+import '../core/config/api_config.dart';
 
 final tokenStorageProvider = Provider<TokenStorage>((ref) {
   return TokenStorage();
 });
 
 final apiClientProvider = Provider<ApiClient>((ref) {
-  final baseUrl = const String.fromEnvironment('API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:8080');
   final ts = ref.read(tokenStorageProvider);
-  final client = ApiClient(baseUrl, ts);
+  final client = ApiClient(ApiConfig.baseUrl, ts);
   client.init();
   return client;
 });
