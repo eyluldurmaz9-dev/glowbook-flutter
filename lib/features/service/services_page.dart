@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../core/constants/app_colors.dart';
 import '../../core/navigation/app_navigation.dart';
+import '../../core/routes/app_routes.dart';
 import '../../core/widgets/glow_widgets.dart';
 import '../../providers/app_providers.dart';
+import '../catalog/catalog_models.dart';
 
 class ServicesPage extends ConsumerStatefulWidget {
   const ServicesPage({super.key});
@@ -15,86 +15,32 @@ class ServicesPage extends ConsumerStatefulWidget {
 }
 
 class _ServicesPageState extends ConsumerState<ServicesPage> {
-  String _category = 'Tümü';
+  final _searchController = TextEditingController();
+  var _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final services = ref.watch(servicesProvider);
-    final categories = [
-      'Tümü',
-      'Cilt bakımı',
-      'Tırnak',
-      'Kaş & kirpik',
-      'Vücut'
-    ];
-
     return Scaffold(
       body: SafeArea(
         child: services.when(
           loading: () => const GlowLoading(message: 'Hizmetler yükleniyor'),
-          error: (error, _) => GlowError(
+          error: (error, _) => ServicesCatalogError(
             message: error.toString(),
             onRetry: () => ref.invalidate(servicesProvider),
           ),
-          data: (items) {
-            return GlowResponsivePage(
-              padding: const EdgeInsets.fromLTRB(20, 25, 20, 106),
-              child: ListView(
-                children: [
-                  GlowPageTop(
-                    title: 'Hizmetleri keşfet',
-                    subtitle: 'Kendin için iyi hissettiren dokunuşu bul.',
-                    action: GlowIconButton(
-                      icon: Icons.tune,
-                      tooltip: 'Filtreler',
-                      onPressed: () {},
-                    ),
-                  ),
-                  const GlowSearchBar(hintText: 'Hizmet veya salon ara'),
-                  const SizedBox(height: 14),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (final category in categories) ...[
-                          ChoiceChip(
-                            label: Text(category),
-                            selected: _category == category,
-                            onSelected: (_) =>
-                                setState(() => _category = category),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "İstanbul'da ${items.length} hizmet",
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {},
-                        child: const Text('Önerilen'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  if (items.isEmpty)
-                    const GlowEmptyState(title: 'Hizmet bulunamadı')
-                  else
-                    for (final service in items) ...[
-                      _ServiceRow(service: service),
-                      const SizedBox(height: 12),
-                    ],
-                ],
-              ),
-            );
-          },
+          data: (items) => ServicesCatalogContent(
+            services: mapCatalogServices(items),
+            searchController: _searchController,
+            query: _query,
+            onQueryChanged: (value) => setState(() => _query = value),
+          ),
         ),
       ),
       bottomNavigationBar: GlowBottomNavigationBar(
@@ -105,84 +51,96 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
   }
 }
 
-class _ServiceRow extends StatelessWidget {
-  const _ServiceRow({required this.service});
+class ServicesCatalogContent extends StatelessWidget {
+  const ServicesCatalogContent({
+    super.key,
+    required this.services,
+    required this.searchController,
+    required this.query,
+    required this.onQueryChanged,
+  });
 
-  final Map<String, dynamic> service;
+  final List<CatalogService> services;
+  final TextEditingController searchController;
+  final String query;
+  final ValueChanged<String> onQueryChanged;
 
   @override
   Widget build(BuildContext context) {
-    final serviceId = service['serviceId'];
-    final title = service['serviceName']?.toString() ?? 'Hizmet';
-    return InkWell(
-      borderRadius: BorderRadius.circular(22),
-      onTap:
-          serviceId == null ? null : () => context.go('/services/$serviceId'),
-      child: GlowCard(
-        padding: const EdgeInsets.all(10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 92,
-              height: 92,
-              decoration: BoxDecoration(
-                color: AppColors.petal,
-                borderRadius: BorderRadius.circular(15),
+    final visible =
+        services.where((service) => service.matches(query)).toList();
+    return GlowResponsivePage(
+      padding: const EdgeInsets.fromLTRB(20, 25, 20, 106),
+      child: ListView(
+        children: [
+          GlowPageTop(
+            title: 'Hizmetleri keşfet',
+            subtitle: 'Aktif hizmet kataloğu.',
+            action: GlowIconButton(
+              icon: Icons.inventory_2_outlined,
+              tooltip: 'Paketler',
+              onPressed: () => AppNavigation.go(context, AppRoutes.packages),
+            ),
+          ),
+          GlowSearchBar(
+            hintText: 'Hizmet ara',
+            controller: searchController,
+            onChanged: onQueryChanged,
+          ),
+          const SizedBox(height: 18),
+          GlowSectionHeader(
+            title: 'Hizmet listesi',
+            subtitle: '${visible.length} hizmet gösteriliyor',
+          ),
+          const SizedBox(height: 12),
+          if (services.isEmpty)
+            const ServicesCatalogEmpty()
+          else if (visible.isEmpty)
+            const GlowEmptyState(
+              title: 'Aramana uygun hizmet yok',
+              message: 'Arama metnini değiştirerek tekrar dene.',
+              icon: Icons.search_off,
+            )
+          else
+            for (final service in visible) ...[
+              GlowServiceCard(
+                title: service.name,
+                subtitle: service.description ?? 'Ayrıntılar için dokun.',
+                imageAsset: service.image,
+                onTap: service.id == null
+                    ? null
+                    : () =>
+                        AppNavigation.go(context, '/services/${service.id}'),
               ),
-              child: const Icon(Icons.spa_outlined,
-                  color: AppColors.action, size: 34),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 5),
-                  Text(
-                    service['description']?.toString() ??
-                        'Uzman dokunuşuyla premium bakım deneyimi.',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 9),
-                  Row(
-                    children: [
-                      const Icon(Icons.schedule,
-                          color: AppColors.secondaryText, size: 12),
-                      const SizedBox(width: 4),
-                      Text('60 dk',
-                          style: Theme.of(context).textTheme.labelSmall),
-                      const SizedBox(width: 6),
-                      const GlowPill(
-                        label: 'Ödeme salonda',
-                        color: AppColors.successDesign,
-                        background: AppColors.greenTint,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  'Detay',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelSmall
-                      ?.copyWith(color: AppColors.action),
-                ),
-                const Icon(Icons.chevron_right, color: AppColors.action),
-              ],
-            ),
-          ],
-        ),
+              const SizedBox(height: 12),
+            ],
+        ],
       ),
     );
+  }
+}
+
+class ServicesCatalogEmpty extends StatelessWidget {
+  const ServicesCatalogEmpty({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const GlowEmptyState(
+      title: 'Hizmet bulunamadı',
+      message: 'Aktif hizmet geldiğinde burada görünür.',
+      icon: Icons.spa_outlined,
+    );
+  }
+}
+
+class ServicesCatalogError extends StatelessWidget {
+  const ServicesCatalogError({super.key, required this.message, this.onRetry});
+
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlowError(message: message, onRetry: onRetry);
   }
 }

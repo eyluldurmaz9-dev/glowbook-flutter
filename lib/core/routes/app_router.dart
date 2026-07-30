@@ -14,6 +14,7 @@ import '../../features/employee/employee_selection_page.dart';
 import '../../features/service/services_page.dart';
 import '../../features/service/service_detail_page.dart';
 import '../../features/package/packages_page.dart';
+import '../../features/package/package_detail_page.dart';
 import '../../features/dashboard/customer_dashboard_page.dart';
 import '../../features/dashboard/employee_dashboard_page.dart';
 import '../../features/dashboard/admin_dashboard_page.dart';
@@ -58,6 +59,16 @@ final appRouter = GoRouter(
     GoRoute(
         path: AppRoutes.packages,
         builder: (context, state) => const PackagesPage()),
+    GoRoute(
+      path: AppRoutes.packageDetail,
+      builder: (context, state) {
+        final serviceId =
+            int.tryParse(state.pathParameters['serviceId'] ?? '') ?? 0;
+        final packageId =
+            int.tryParse(state.pathParameters['packageId'] ?? '') ?? 0;
+        return PackageDetailPage(serviceId: serviceId, packageId: packageId);
+      },
+    ),
     GoRoute(
         path: AppRoutes.appointment,
         builder: (context, state) => const AppointmentPage()),

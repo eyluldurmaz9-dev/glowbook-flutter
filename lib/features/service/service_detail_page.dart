@@ -6,6 +6,7 @@ import '../../core/navigation/app_navigation.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/widgets/glow_widgets.dart';
 import '../../providers/app_providers.dart';
+import '../catalog/catalog_models.dart';
 
 class ServiceDetailPage extends ConsumerWidget {
   const ServiceDetailPage({super.key, required this.serviceId});
@@ -14,6 +15,7 @@ class ServiceDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final services = ref.watch(servicesProvider);
     final options = ref.watch(serviceOptionsProvider(serviceId));
     final packages = ref.watch(servicePackagesProvider(serviceId));
     final employees = ref.watch(employeesByServiceProvider(serviceId));
@@ -36,46 +38,31 @@ class ServiceDetailPage extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 18),
-              Container(
-                height: 210,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.blush, AppColors.petal],
-                  ),
-                  borderRadius: BorderRadius.circular(30),
+              services.when(
+                loading: () => const GlowSkeleton(height: 320, radius: 28),
+                error: (error, _) => GlowError(
+                  message: error.toString(),
+                  onRetry: () => ref.invalidate(servicesProvider),
                 ),
-                child: const Icon(Icons.auto_awesome,
-                    color: AppColors.action, size: 72),
-              ),
-              const SizedBox(height: 22),
-              const GlowEyebrow('Hizmet detayı'),
-              const SizedBox(height: 8),
-              Text(
-                'Premium bakım deneyimi',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Uzmanlarımızın özenli dokunuşlarıyla kendine ayırdığın zamanı güzelleştir. Paket seçeneklerini ve uygun personeli aşağıda inceleyebilirsin.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 14),
-              const Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  GlowPill(label: '60 dk'),
-                  GlowPill(label: 'Ödeme salonda'),
-                  GlowPill(
-                    label: 'Popüler',
-                    color: AppColors.goldText,
-                    background: AppColors.goldTint,
-                  ),
-                ],
+                data: (items) {
+                  final service = _firstMatchingService(
+                    mapCatalogServices(items),
+                    serviceId,
+                  );
+                  if (service == null) {
+                    return const GlowEmptyState(
+                      title: 'Hizmet bulunamadı',
+                      message:
+                          'Bu bağlantıdaki hizmet aktif katalogda görünmüyor.',
+                      icon: Icons.spa_outlined,
+                    );
+                  }
+                  return _ServiceHeader(service: service);
+                },
               ),
               const SizedBox(height: 22),
               _Section(
-                title: 'Alt hizmet',
+                title: 'Alt hizmetler',
                 child: options.when(
                   loading: () => const GlowLoading(message: 'Seçenekler'),
                   error: (error, _) => GlowError(
@@ -83,12 +70,8 @@ class ServiceDetailPage extends ConsumerWidget {
                     onRetry: () =>
                         ref.invalidate(serviceOptionsProvider(serviceId)),
                   ),
-                  data: (items) => _ListBlock(
-                    items: items,
-                    emptyTitle: 'Seçenek bulunamadı',
-                    titleKey: 'optionName',
-                    icon: Icons.schedule,
-                    subtitleBuilder: (item) => '${item['price'] ?? '-'} TL',
+                  data: (items) => _OptionList(
+                    options: mapCatalogOptions(items),
                   ),
                 ),
               ),
@@ -102,19 +85,14 @@ class ServiceDetailPage extends ConsumerWidget {
                     onRetry: () =>
                         ref.invalidate(servicePackagesProvider(serviceId)),
                   ),
-                  data: (items) => _ListBlock(
-                    items: items,
-                    emptyTitle: 'Paket bulunamadı',
-                    titleKey: 'packageName',
-                    icon: Icons.inventory_2_outlined,
-                    subtitleBuilder: (item) =>
-                        '${item['totalSession'] ?? '-'} seans · ${item['price'] ?? '-'} TL',
+                  data: (items) => _PackageList(
+                    packages: mapCatalogPackages(items),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               _Section(
-                title: 'Personel',
+                title: 'Uygun personel',
                 child: employees.when(
                   loading: () => const GlowLoading(message: 'Personel'),
                   error: (error, _) => GlowError(
@@ -122,20 +100,14 @@ class ServiceDetailPage extends ConsumerWidget {
                     onRetry: () =>
                         ref.invalidate(employeesByServiceProvider(serviceId)),
                   ),
-                  data: (items) => _ListBlock(
-                    items: items,
-                    emptyTitle: 'Personel bulunamadı',
-                    titleKey: 'employeeName',
-                    icon: Icons.badge_outlined,
-                    subtitleBuilder: (item) =>
-                        item['employeeId']?.toString() ?? '',
-                  ),
+                  data: (items) => _EmployeeList(items: items),
                 ),
               ),
               const SizedBox(height: 24),
               GlowButton(
                 label: 'Randevu Oluştur',
                 icon: Icons.calendar_today_outlined,
+                fullWidth: true,
                 onPressed: () =>
                     AppNavigation.go(context, AppRoutes.appointment),
               ),
@@ -143,6 +115,49 @@ class ServiceDetailPage extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+CatalogService? _firstMatchingService(
+  List<CatalogService> services,
+  int serviceId,
+) {
+  for (final service in services) {
+    if (service.id == serviceId) return service;
+  }
+  return null;
+}
+
+class _ServiceHeader extends StatelessWidget {
+  const _ServiceHeader({required this.service});
+
+  final CatalogService service;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GlowCatalogImage(
+          semanticLabel: service.name,
+          image: service.image,
+          width: double.infinity,
+          height: 220,
+          radius: 30,
+        ),
+        const SizedBox(height: 22),
+        const GlowEyebrow('Hizmet detayı'),
+        const SizedBox(height: 8),
+        Text(service.name, style: Theme.of(context).textTheme.headlineMedium),
+        if (service.description != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            service.description!,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ],
     );
   }
 }
@@ -166,51 +181,99 @@ class _Section extends StatelessWidget {
   }
 }
 
-class _ListBlock extends StatelessWidget {
-  const _ListBlock({
-    required this.items,
-    required this.emptyTitle,
-    required this.titleKey,
-    required this.subtitleBuilder,
-    required this.icon,
-  });
+class _OptionList extends StatelessWidget {
+  const _OptionList({required this.options});
 
-  final List<Map<String, dynamic>> items;
-  final String emptyTitle;
-  final String titleKey;
-  final IconData icon;
-  final String Function(Map<String, dynamic>) subtitleBuilder;
+  final List<CatalogOption> options;
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return GlowEmptyState(title: emptyTitle);
+    if (options.isEmpty) {
+      return const GlowEmptyState(title: 'Alt hizmet bulunamadı');
     }
     return Column(
       children: [
-        for (final item in items) ...[
+        for (final option in options) ...[
           GlowCard(
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                GlowMark(icon: icon, size: 40),
+                const GlowMark(icon: Icons.schedule, size: 40),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(item[titleKey]?.toString() ?? '-',
-                          style: Theme.of(context).textTheme.titleSmall),
-                      const SizedBox(height: 4),
-                      Text(subtitleBuilder(item),
-                          style: Theme.of(context).textTheme.bodySmall),
-                    ],
+                  child: Text(
+                    option.name,
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
-                const Icon(Icons.check_circle,
-                    color: AppColors.action, size: 19),
+                Text(
+                  option.priceText ?? 'Fiyat yok',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: AppColors.action,
+                      ),
+                ),
               ],
             ),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _PackageList extends StatelessWidget {
+  const _PackageList({required this.packages});
+
+  final List<CatalogPackage> packages;
+
+  @override
+  Widget build(BuildContext context) {
+    if (packages.isEmpty) {
+      return const GlowEmptyState(title: 'Paket bulunamadı');
+    }
+    return Column(
+      children: [
+        for (final package in packages) ...[
+          GlowPackageCard(
+            title: package.name,
+            description: package.description ?? 'Ayrıntılar için dokun.',
+            price: package.priceText,
+            sessions: package.totalSession == null
+                ? null
+                : '${package.totalSession} seans',
+            onTap: package.id == null || package.serviceId == null
+                ? null
+                : () => AppNavigation.go(
+                      context,
+                      '/packages/${package.serviceId}/${package.id}',
+                    ),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _EmployeeList extends StatelessWidget {
+  const _EmployeeList({required this.items});
+
+  final List<Map<String, dynamic>> items;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const GlowEmptyState(title: 'Personel bulunamadı');
+    }
+    return Column(
+      children: [
+        for (final item in items) ...[
+          GlowEmployeeCard(
+            name: item['employeeName']?.toString() ??
+                item['fullName']?.toString() ??
+                'Personel',
+            role: item['employeeId']?.toString() ?? 'Uzman',
           ),
           const SizedBox(height: 10),
         ],

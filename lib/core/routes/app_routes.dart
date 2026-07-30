@@ -10,6 +10,7 @@ class AppRoutes {
   static const String services = '/services';
   static const String serviceDetail = '/services/:serviceId';
   static const String packages = '/packages';
+  static const String packageDetail = '/packages/:serviceId/:packageId';
   static const String appointment = '/appointment';
   static const String calendar = '/calendar';
   static const String employeeSelection = '/employees/select';

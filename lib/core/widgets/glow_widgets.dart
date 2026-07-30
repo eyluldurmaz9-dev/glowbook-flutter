@@ -1142,8 +1142,8 @@ class GlowServiceCard extends StatelessWidget {
       radius: AppRadius.serviceTile,
       child: Row(
         children: [
-          GlowAssetThumb(
-            imageAsset: imageAsset,
+          GlowCatalogImage(
+            image: imageAsset,
             icon: Icons.spa_outlined,
             semanticLabel: title,
           ),
@@ -1489,6 +1489,75 @@ class GlowAssetThumb extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class GlowCatalogImage extends StatelessWidget {
+  const GlowCatalogImage({
+    super.key,
+    required this.semanticLabel,
+    this.image,
+    this.icon = Icons.spa_outlined,
+    this.height = 92,
+    this.width = 92,
+    this.radius = 15,
+  });
+
+  final String semanticLabel;
+  final String? image;
+  final IconData icon;
+  final double height;
+  final double width;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final source = image?.trim();
+    Widget child;
+    if (source == null || source.isEmpty) {
+      child = _placeholder();
+    } else if (source.startsWith('http://') || source.startsWith('https://')) {
+      child = Image.network(
+        source,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return const Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) => _placeholder(),
+      );
+    } else {
+      child = Image.asset(
+        source,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _placeholder(),
+      );
+    }
+
+    return Semantics(
+      image: true,
+      label: semanticLabel,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: Container(
+          width: width,
+          height: height,
+          color: AppColors.petal,
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    final iconSize = width.isFinite ? width * .36 : 52.0;
+    return Icon(icon, color: AppColors.action, size: iconSize.clamp(32, 72));
   }
 }
 

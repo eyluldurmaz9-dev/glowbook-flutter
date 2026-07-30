@@ -1,0 +1,141 @@
+class CatalogService {
+  const CatalogService({
+    required this.id,
+    required this.name,
+    this.description,
+    this.image,
+    this.active,
+  });
+
+  final int? id;
+  final String name;
+  final String? description;
+  final String? image;
+  final bool? active;
+
+  factory CatalogService.fromJson(Map<String, dynamic> json) {
+    return CatalogService(
+      id: _intValue(json['serviceId']),
+      name: _cleanText(json['serviceName']) ?? 'Hizmet',
+      description: _cleanText(json['description']),
+      image: _cleanText(json['serviceImage']),
+      active: _boolValue(json['active']),
+    );
+  }
+
+  bool matches(String query) {
+    final normalized = query.trim().toLowerCase();
+    if (normalized.isEmpty) return true;
+    return name.toLowerCase().contains(normalized) ||
+        (description?.toLowerCase().contains(normalized) ?? false);
+  }
+}
+
+class CatalogOption {
+  const CatalogOption({
+    required this.id,
+    required this.serviceId,
+    required this.name,
+    this.priceText,
+    this.active,
+  });
+
+  final int? id;
+  final int? serviceId;
+  final String name;
+  final String? priceText;
+  final bool? active;
+
+  factory CatalogOption.fromJson(Map<String, dynamic> json) {
+    return CatalogOption(
+      id: _intValue(json['optionId']),
+      serviceId: _intValue(json['serviceId']),
+      name: _cleanText(json['optionName']) ?? 'Alt hizmet',
+      priceText: _priceText(json['price']),
+      active: _boolValue(json['active']),
+    );
+  }
+}
+
+class CatalogPackage {
+  const CatalogPackage({
+    required this.id,
+    required this.serviceId,
+    required this.name,
+    this.serviceName,
+    this.description,
+    this.totalSession,
+    this.priceText,
+    this.image,
+    this.active,
+  });
+
+  final int? id;
+  final int? serviceId;
+  final String name;
+  final String? serviceName;
+  final String? description;
+  final int? totalSession;
+  final String? priceText;
+  final String? image;
+  final bool? active;
+
+  factory CatalogPackage.fromJson(Map<String, dynamic> json) {
+    return CatalogPackage(
+      id: _intValue(json['packageId']),
+      serviceId: _intValue(json['serviceId']),
+      name: _cleanText(json['packageName']) ?? 'Paket',
+      serviceName: _cleanText(json['serviceName']),
+      description: _cleanText(json['description']),
+      totalSession: _intValue(json['totalSession']),
+      priceText: _priceText(json['price']),
+      image: _cleanText(json['packageImage']),
+      active: _boolValue(json['active']),
+    );
+  }
+
+  bool matches(String query) {
+    final normalized = query.trim().toLowerCase();
+    if (normalized.isEmpty) return true;
+    return name.toLowerCase().contains(normalized) ||
+        (serviceName?.toLowerCase().contains(normalized) ?? false) ||
+        (description?.toLowerCase().contains(normalized) ?? false);
+  }
+}
+
+List<CatalogService> mapCatalogServices(List<Map<String, dynamic>> items) {
+  return items.map(CatalogService.fromJson).toList(growable: false);
+}
+
+List<CatalogOption> mapCatalogOptions(List<Map<String, dynamic>> items) {
+  return items.map(CatalogOption.fromJson).toList(growable: false);
+}
+
+List<CatalogPackage> mapCatalogPackages(List<Map<String, dynamic>> items) {
+  return items.map(CatalogPackage.fromJson).toList(growable: false);
+}
+
+String? _cleanText(Object? value) {
+  final text = value?.toString().trim();
+  return text == null || text.isEmpty ? null : text;
+}
+
+String? _priceText(Object? value) {
+  if (value == null) return null;
+  return _cleanText(value);
+}
+
+int? _intValue(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
+bool? _boolValue(Object? value) {
+  if (value is bool) return value;
+  if (value == null) return null;
+  final text = value.toString().toLowerCase();
+  if (text == 'true') return true;
+  if (text == 'false') return false;
+  return null;
+}

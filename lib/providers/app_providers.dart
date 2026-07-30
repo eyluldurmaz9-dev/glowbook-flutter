@@ -54,6 +54,21 @@ final servicePackagesProvider = FutureProvider.autoDispose
   return ref.watch(glowBackendServiceProvider).getServicePackages(serviceId);
 });
 
+final allServicePackagesProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final services = await ref.watch(servicesProvider.future);
+  final packages = <Map<String, dynamic>>[];
+  for (final service in services) {
+    final serviceId = service['serviceId'];
+    if (serviceId is! int) continue;
+    final servicePackages = await ref
+        .watch(glowBackendServiceProvider)
+        .getServicePackages(serviceId);
+    packages.addAll(servicePackages);
+  }
+  return packages;
+});
+
 final profileProvider =
     FutureProvider.autoDispose<Map<String, dynamic>?>((ref) {
   ref.watch(authControllerProvider);

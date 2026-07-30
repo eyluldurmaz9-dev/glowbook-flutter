@@ -45,6 +45,7 @@ Aktif route'lar:
 | `/services` | `features/service/services_page.dart` |
 | `/services/:serviceId` | `features/service/service_detail_page.dart` |
 | `/packages` | `features/package/packages_page.dart` |
+| `/packages/:serviceId/:packageId` | `features/package/package_detail_page.dart` |
 | `/appointment` | `features/appointment/appointment_page.dart` |
 | `/calendar` | `features/appointment/calendar_page.dart` |
 | `/employees/select` | `features/employee/employee_selection_page.dart` |
@@ -55,6 +56,14 @@ Aktif route'lar:
 | `/admin` | `features/dashboard/admin_dashboard_page.dart` |
 | `/employee` | `features/employee/employee_page.dart` |
 | `/admin/legacy` | `features/admin/admin_page.dart` |
+
+## Catalog Implementation Notes
+
+- Customer home uses real `/api/catalog/services` data for featured services.
+- Services search is local over the current API response; backend category filtering is not implemented because `ServiceResponse` has no category field.
+- Package list aggregates real `/api/catalog/services/{serviceId}/packages` responses for active services; backend pagination is not available and was not simulated.
+- Package detail uses `/packages/:serviceId/:packageId` and selects the package from the service package list because there is no package-by-id catalog endpoint.
+- Campaigns, favorites, service rating, location, duration and main-service price are not rendered from fixed UI data because the current backend contract does not expose those fields.
 
 ## Ekran Eşleştirmesi
 
