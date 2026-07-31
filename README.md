@@ -1,19 +1,57 @@
 # GlowBook Flutter
 
-GlowBook Flutter uygulamasi Android, iOS ve Flutter Web hedefleri icin hazirlanmis frontend uygulamasidir. Uygulama Spring Boot backend ile Dio, secure storage ve Riverpod tabanli state management uzerinden konusur.
+GlowBook Flutter, GlowBook randevu ve salon yonetim sisteminin Android, iOS ve Flutter Web istemcisidir. Uygulama Spring Boot backend ile mevcut REST API mimarisi, Dio client, secure storage ve Riverpod tabanli state management uzerinden haberlesir.
+
+Tasarim dili `glowbook-visualAssentManager-ui` deposundaki UI/UX referansindan Flutter widget'lari ile yeniden olusturulmustur. Tasarim deposundaki React/web kodu bu projeye kopyalanmaz.
+
+## Ozellikler
+
+- Splash, tanitim, login, register, misafir devam ve rol bazli yonlendirme
+- Musteri ana sayfasi, hizmetler, hizmet detaylari, paketler ve paket detaylari
+- Randevu olusturma, uygun slot secimi, personel secimi, ozet ve onay akisi
+- Musteri paneli: randevular, paketler, bildirimler, profil ve logout
+- Personel paneli: gunluk randevular, haftalik takvim, durum guncelleme, bildirimler ve profil
+- Admin web paneli: hizmet, kategori, paket, personel ve randevu yonetimi; backend'in destekledigi kapsamla sinirlidir
+- Loading, empty, error, validation ve retry durumlari
+- Android, iOS ve Flutter Web icin responsive Material Design 3 arayuz
+
+## Kullanilan Teknolojiler
+
+- Flutter ve Dart
+- Material Design 3
+- Dio HTTP client
+- Flutter secure storage
+- Riverpod state management
+- Flutter test altyapisi
+- Vercel Flutter Web deployment
 
 ## Gereksinimler
 
 - Flutter stable SDK
 - Dart SDK, Flutter ile birlikte gelir
 - Android Studio ve Android SDK
-- iOS build icin macOS ve Xcode
+- Web build icin Chrome veya uyumlu Flutter web toolchain
+- iOS build icin macOS, Xcode ve Apple signing yetkileri
 
-Windows uzerinde Flutter plugin symlinkleri icin Developer Mode acik olmalidir. Projeyi OneDrive disinda bir klasorde calistirmak release build icin daha guvenilirdir.
+Windows uzerinde Flutter plugin symlinkleri icin Developer Mode acik olmalidir. OneDrive icindeki calisma klasorleri bazi Flutter generated dosyalarinda silme/erisim problemi olusturabilir; release build icin OneDrive disinda kisa bir path onerilir.
 
-## Ortam Ayarlari
+## Local Kurulum
 
-Gercek secret veya production URL commit edilmez. Lokal degerler icin `.env.example` dosyasini referans alin ve degerleri shell, CI secret veya Vercel environment variables icinde tutun.
+```powershell
+cd flutter_app
+flutter pub get
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
+```
+
+Flutter Web icin:
+
+```powershell
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8080
+```
+
+## Environment Yapilandirmasi
+
+Gercek secret, token, SMS credential veya production URL commit edilmez. `.env.example` yalnizca beklenen anahtar isimlerini gosterir. Runtime API adresi `--dart-define` ile verilir.
 
 Development:
 
@@ -27,39 +65,94 @@ Staging:
 flutter run --dart-define=API_BASE_URL=https://staging-api.example.com
 ```
 
-Production web build:
+Production:
 
 ```powershell
 flutter build web --release --dart-define=API_BASE_URL=https://api.example.com --base-href=/
 ```
 
-## Kalite Kontrolleri
+## Backend Baglantisi
+
+Backend reposu: `glowbook-backend` / mevcut remote adiyla `Glowbook`.
+
+Flutter istemcisi backend'e asagidaki ana alanlarda baglanir:
+
+- Authentication: login, register, refresh token
+- Catalog: services, service options, packages
+- Appointment: available slots, create, detail, cancel, update
+- Waiting list
+- Customer profile, customer packages
+- Employee appointments
+- Notifications
+- Admin services, packages, employees, schedules
+
+Endpoint sozlesmesi icin backend reposundaki `docs/API_REFERENCE.md` dosyasina bakin.
+
+## Test Komutlari
 
 ```powershell
-flutter pub get
 dart format --set-exit-if-changed .
 flutter analyze
 flutter test
-flutter build web --release --dart-define=API_BASE_URL=https://api.example.com --base-href=/
 ```
 
-Android release build:
+## Android Build
+
+APK:
 
 ```powershell
 flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com
+```
+
+Play Store app bundle:
+
+```powershell
 flutter build appbundle --release --dart-define=API_BASE_URL=https://api.example.com
 ```
 
-## Deployment
+Signing icin `docs/ANDROID_RELEASE.md` dosyasindaki adimlari izleyin. Keystore ve sifreleri repository'ye commit etmeyin.
 
-- Vercel web deployment: `vercel.json`
-- Flutter deployment rehberi: `docs/DEPLOYMENT_FLUTTER.md`
-- Android release rehberi: `docs/ANDROID_RELEASE.md`
-- iOS release rehberi: `docs/IOS_RELEASE.md`
+## Flutter Web Build
 
-## Guvenlik
+```powershell
+flutter build web --release --dart-define=API_BASE_URL=https://api.example.com --base-href=/
+```
 
-- Token, JWT, SMS credential, database password ve production URL commit etmeyin.
+SPA route rewrite ayarlari `vercel.json` icindedir.
+
+## Vercel Deployment
+
+Vercel'de proje root'u `flutter_app` olacak sekilde ayarlanir.
+
+- Build command: `flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL --base-href=/`
+- Output directory: `build/web`
+- Environment variable: `API_BASE_URL`
+
+Detaylar: `docs/DEPLOYMENT_FLUTTER.md`
+
+## iOS
+
+iOS build Windows ortaminda dogrulanamaz. Gercek build icin macOS, Xcode, CocoaPods ve Apple Developer signing gerekir.
+
+```bash
+flutter build ios --release --no-codesign --dart-define=API_BASE_URL=https://api.example.com
+```
+
+Signing ve bundle identifier kontrol listesi: `docs/IOS_RELEASE.md`
+
+## Proje Klasor Yapisi
+
+- `lib/`: uygulama kodu, ekranlar, state, servisler ve ortak UI
+- `test/`: unit ve widget testleri
+- `assets/`: Flutter asset dosyalari
+- `android/`: Android native proje dosyalari
+- `ios/`: iOS native proje dosyalari
+- `web/`: Flutter Web giris dosyalari
+- `docs/`: mimari, release, test, deployment ve teslim belgeleri
+
+## Guvenlik Notlari
+
+- JWT access token ve refresh token loglanmaz.
+- Kullanici profili, sifre, token ve SMS credential debug ciktilarina yazilmaz.
 - `.env` dosyalari `.gitignore` icindedir.
-- Production backend URL degeri `--dart-define=API_BASE_URL=...` ile verilmelidir.
-- Debug loglarda token veya kullanici verisi yazdirilmamalidir.
+- Production backend URL degeri repository yerine CI/Vercel environment variable olarak tutulur.
