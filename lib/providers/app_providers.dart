@@ -87,6 +87,13 @@ final customerUpcomingAppointmentsProvider = FutureProvider.autoDispose
       .getCustomerUpcomingAppointments(customerId);
 });
 
+final customerPastAppointmentsProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, int>((ref, customerId) {
+  return ref
+      .watch(glowBackendServiceProvider)
+      .getCustomerPastAppointments(customerId);
+});
+
 final notificationsProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, customerId) {
   return ref.watch(glowBackendServiceProvider).getNotifications(customerId);
