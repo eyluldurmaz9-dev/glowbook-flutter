@@ -6,6 +6,8 @@ import '../../core/navigation/app_navigation.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/widgets/glow_widgets.dart';
 import '../../providers/app_providers.dart';
+import '../catalog/catalog_models.dart';
+import 'booking_models.dart';
 
 class AppointmentPage extends ConsumerStatefulWidget {
   const AppointmentPage({super.key});
@@ -15,277 +17,111 @@ class AppointmentPage extends ConsumerStatefulWidget {
 }
 
 class _AppointmentPageState extends ConsumerState<AppointmentPage> {
-  bool _quick = true;
-  String _time = '14:30';
-  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
-  bool _isCreating = false;
+  final _guestFormKey = GlobalKey<FormState>();
+  final _guestNameController = TextEditingController();
+  final _guestSurnameController = TextEditingController();
+  final _guestPhoneController = TextEditingController();
+
+  var _step = 0;
+  CatalogService? _service;
+  CatalogOption? _option;
+  CustomerPackageOption? _customerPackage;
+  DateTime _date = BookingDateUtils.today().add(const Duration(days: 1));
+  String? _time;
+  BookingSlot? _slot;
+  bool _submitting = false;
+  bool _joiningWaitlist = false;
+  BookingResult? _result;
+
+  @override
+  void dispose() {
+    _guestNameController.dispose();
+    _guestSurnameController.dispose();
+    _guestPhoneController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
-    final customerId = auth.valueOrNull?.customerId;
-    final appointments = customerId == null
-        ? null
-        : ref.watch(customerUpcomingAppointmentsProvider(customerId));
+    final session = auth.asData?.value;
+    final customerId = session?.customerId;
     final services = ref.watch(servicesProvider);
+    final slots = _service == null
+        ? null
+        : ref.watch(
+            availableSlotsProvider(
+              AvailableSlotsQuery(
+                serviceId: _service!.id ?? 0,
+                date: BookingDateUtils.formatDate(_date),
+              ),
+            ),
+          );
 
     return Scaffold(
       body: SafeArea(
         child: GlowResponsivePage(
           padding: const EdgeInsets.fromLTRB(20, 25, 20, 106),
-          child: ListView(
-            children: [
-              GlowPageTop(
-                title: 'Randevu oluştur',
-                subtitle: 'Kendin için ayırdığın zaman.',
-                action: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GlowIconButton(
-                      icon: Icons.calendar_month_outlined,
-                      tooltip: 'Takvim',
-                      onPressed: () =>
-                          AppNavigation.go(context, AppRoutes.calendar),
-                    ),
-                    const SizedBox(width: 8),
-                    GlowIconButton(
-                      icon: Icons.badge_outlined,
-                      tooltip: 'Personel seç',
-                      onPressed: () => AppNavigation.go(
-                        context,
-                        AppRoutes.employeeSelection,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const _BookingFlow(),
-              const SizedBox(height: 18),
-              const GlowSoftNotice(
-                title: 'Seçimini istediğin zaman değiştirebilirsin.',
-                message: 'Çalışma saatleri 09:00-18:00 arasındadır.',
-              ),
-              const SizedBox(height: 18),
-              services.when(
-                loading: () => const GlowSkeleton(height: 82),
-                error: (error, _) => GlowError(
-                  message: error.toString(),
-                  onRetry: () => ref.invalidate(servicesProvider),
-                ),
-                data: (items) => _SelectionTile(
-                  title: _stringValue(items, 'serviceName') ?? 'Hizmet seç',
-                  subtitle: 'Backend katalog servisinden alınır',
-                  icon: Icons.spa_outlined,
-                  selected: items.isNotEmpty,
-                ),
-              ),
-              const SizedBox(height: 10),
-              services.when(
-                loading: () => const GlowSkeleton(height: 82),
-                error: (error, _) => GlowError(message: error.toString()),
-                data: (items) {
-                  final serviceId = _intValue(items, 'serviceId');
-                  if (serviceId == null) {
-                    return const GlowEmptyState(title: 'Alt hizmet bulunamadı');
-                  }
-                  final options = ref.watch(serviceOptionsProvider(serviceId));
-                  return options.when(
-                    loading: () => const GlowSkeleton(height: 82),
-                    error: (error, _) => GlowError(
-                      message: error.toString(),
-                      onRetry: () =>
-                          ref.invalidate(serviceOptionsProvider(serviceId)),
-                    ),
-                    data: (options) => _SelectionTile(
-                      title: _stringValue(options, 'optionName') ??
-                          'Alt hizmet seç',
-                      subtitle: 'Süre ve fiyat backend seçeneğinden alınır',
-                      icon: Icons.schedule,
-                      selected: options.isNotEmpty,
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
-              const _SelectionTile(
-                title: 'Tek seans',
-                subtitle: 'Paket kullanmadan randevu',
-                icon: Icons.inventory_2_outlined,
-                selected: true,
-              ),
-              const SizedBox(height: 10),
-              const _SelectionTile(
-                title: 'Elif Yılmaz',
-                subtitle: 'Uzman estetisyen · 4.9 puan',
-                icon: Icons.person_outline,
-              ),
-              const SizedBox(height: 20),
-              Text('Tarih', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 10),
-              _DateRow(
-                selectedDate: _selectedDate,
-                onSelected: (date) => setState(() => _selectedDate = date),
-              ),
-              const SizedBox(height: 12),
-              Row(
+          child: Form(
+            key: _guestFormKey,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: Text.rich(
-                      const TextSpan(
-                        text: 'Çalışma saatleri ',
-                        children: [
-                          TextSpan(
-                            text: '09:00-18:00',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                  GlowPageTop(
+                    title: 'Randevu oluştur',
+                    subtitle: 'Hizmetini seç, uygun saati backend’den doğrula.',
+                    action: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GlowIconButton(
+                          icon: Icons.calendar_month_outlined,
+                          tooltip: 'Takvim',
+                          onPressed: () =>
+                              AppNavigation.go(context, AppRoutes.calendar),
+                        ),
+                        const SizedBox(width: 8),
+                        GlowIconButton(
+                          icon: Icons.badge_outlined,
+                          tooltip: 'Personel seç',
+                          onPressed: () => AppNavigation.go(
+                            context,
+                            AppRoutes.employeeSelection,
                           ),
-                        ],
-                      ),
-                      style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                     ),
                   ),
-                  Switch(
-                    value: _quick,
-                    activeThumbColor: AppColors.white,
-                    activeTrackColor: AppColors.action,
-                    onChanged: (value) => setState(() => _quick = value),
+                  BookingStepper(currentStep: _step),
+                  const SizedBox(height: 18),
+                  if (_result != null) ...[
+                    BookingResultCard(result: _result!),
+                    const SizedBox(height: 18),
+                  ],
+                  _StepSurface(
+                    title: _stepTitle,
+                    child: _buildStep(
+                      services: services,
+                      slots: slots,
+                      customerId: customerId,
+                      signedIn: customerId != null,
+                    ),
                   ),
-                  Text('İlk müsait',
-                      style: Theme.of(context).textTheme.labelSmall),
+                  const SizedBox(height: 18),
+                  _ActionBar(
+                    step: _step,
+                    canContinue: _canContinue(customerId),
+                    submitting: _submitting,
+                    onBack: _step == 0 ? null : () => setState(() => _step--),
+                    onNext: _step < 5 ? _goNext : null,
+                    onSubmit:
+                        _step == 5 ? () => _confirmAndSubmit(customerId) : null,
+                  ),
+                  const SizedBox(height: 28),
+                  _UpcomingAppointments(customerId: customerId),
                 ],
               ),
-              const SizedBox(height: 12),
-              _TimeGrid(
-                selected: _time,
-                onSelected: (value) => setState(() => _time = value),
-              ),
-              const SizedBox(height: 18),
-              services.when(
-                loading: () => const GlowButton(
-                  label: 'Hizmetler yükleniyor',
-                  onPressed: null,
-                  loading: true,
-                  fullWidth: true,
-                ),
-                error: (error, _) => GlowButton(
-                  label: 'Hizmetleri tekrar yükle',
-                  icon: Icons.refresh,
-                  fullWidth: true,
-                  onPressed: () => ref.invalidate(servicesProvider),
-                ),
-                data: (items) {
-                  final serviceId = _intValue(items, 'serviceId');
-                  if (customerId == null || serviceId == null) {
-                    return GlowButton(
-                      label: customerId == null
-                          ? 'Giriş yaparak randevu oluştur'
-                          : 'Hizmet bulunamadı',
-                      icon: Icons.lock_outline,
-                      fullWidth: true,
-                      onPressed: customerId == null
-                          ? () => AppNavigation.go(context, AppRoutes.login)
-                          : null,
-                    );
-                  }
-
-                  final date = _dateString(_selectedDate);
-                  final options = ref.watch(serviceOptionsProvider(serviceId));
-                  final slots = ref.watch(
-                    availableSlotsProvider(
-                      AvailableSlotsQuery(serviceId: serviceId, date: date),
-                    ),
-                  );
-
-                  return options.when(
-                    loading: () => const GlowButton(
-                      label: 'Alt hizmetler yükleniyor',
-                      onPressed: null,
-                      loading: true,
-                      fullWidth: true,
-                    ),
-                    error: (error, _) => GlowButton(
-                      label: 'Alt hizmetleri tekrar yükle',
-                      icon: Icons.refresh,
-                      fullWidth: true,
-                      onPressed: () =>
-                          ref.invalidate(serviceOptionsProvider(serviceId)),
-                    ),
-                    data: (options) => slots.when(
-                      loading: () => const GlowButton(
-                        label: 'Müsait saatler yükleniyor',
-                        onPressed: null,
-                        loading: true,
-                        fullWidth: true,
-                      ),
-                      error: (error, _) => GlowButton(
-                        label: 'Saatleri tekrar yükle',
-                        icon: Icons.refresh,
-                        fullWidth: true,
-                        onPressed: () => ref.invalidate(
-                          availableSlotsProvider(
-                            AvailableSlotsQuery(
-                              serviceId: serviceId,
-                              date: date,
-                            ),
-                          ),
-                        ),
-                      ),
-                      data: (slots) => GlowButton(
-                        label: _isCreating
-                            ? 'Randevu oluşturuluyor'
-                            : 'Randevuyu Onayla',
-                        icon: Icons.calendar_today_outlined,
-                        loading: _isCreating,
-                        fullWidth: true,
-                        onPressed: _isCreating
-                            ? null
-                            : () => _createAppointment(
-                                  customerId: customerId,
-                                  serviceId: serviceId,
-                                  optionId: _intValue(options, 'optionId'),
-                                  slots: slots,
-                                ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 28),
-              Text('Yaklaşan Randevularım',
-                  style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              if (customerId == null)
-                const GlowEmptyState(
-                  title: 'Oturum gerekli',
-                  message: 'Randevularını görmek için giriş yapmalısın.',
-                  icon: Icons.lock_outline,
-                )
-              else
-                appointments!.when(
-                  loading: () =>
-                      const GlowLoading(message: 'Randevular yükleniyor'),
-                  error: (error, _) => GlowError(
-                    message: error.toString(),
-                    onRetry: () => ref.invalidate(
-                      customerUpcomingAppointmentsProvider(customerId),
-                    ),
-                  ),
-                  data: (items) => items.isEmpty
-                      ? const GlowEmptyState(title: 'Yaklaşan randevu yok')
-                      : Column(
-                          children: [
-                            for (final appointment in items) ...[
-                              GlowAppointmentCard(
-                                title: appointment['serviceName']?.toString() ??
-                                    'Randevu',
-                                time:
-                                    '${appointment['appointmentDate'] ?? ''} ${appointment['appointmentTime'] ?? ''}',
-                              ),
-                              const SizedBox(height: 10),
-                            ],
-                          ],
-                        ),
-                ),
-            ],
+            ),
           ),
         ),
       ),
@@ -296,301 +132,1047 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     );
   }
 
-  Future<void> _createAppointment({
-    required int customerId,
-    required int serviceId,
-    required int? optionId,
-    required List<Map<String, dynamic>> slots,
-  }) async {
-    if (optionId == null) {
-      GlowSnackBar.showError(context, 'Randevu için alt hizmet bulunamadı.');
+  String get _stepTitle {
+    return const [
+      'Hizmet seçimi',
+      'Alt hizmet ve paket',
+      'Tarih seçimi',
+      'Uygun zaman aralığı',
+      'Personel seçimi',
+      'Randevu özeti',
+    ][_step];
+  }
+
+  Widget _buildStep({
+    required AsyncValue<List<Map<String, dynamic>>> services,
+    required AsyncValue<List<Map<String, dynamic>>>? slots,
+    required int? customerId,
+    required bool signedIn,
+  }) {
+    switch (_step) {
+      case 0:
+        return services.when(
+          loading: () => const GlowLoading(message: 'Hizmetler yükleniyor'),
+          error: (error, _) => GlowError(
+            message: bookingErrorMessage(error) ?? error.toString(),
+            onRetry: () => ref.invalidate(servicesProvider),
+          ),
+          data: (items) => _ServicePicker(
+            services: mapCatalogServices(items),
+            selected: _service,
+            onSelected: _selectService,
+          ),
+        );
+      case 1:
+        if (_service?.id == null) {
+          return const GlowEmptyState(title: 'Hizmet seç');
+        }
+        final options = ref.watch(serviceOptionsProvider(_service!.id!));
+        final servicePackages =
+            ref.watch(servicePackagesProvider(_service!.id!));
+        final customerPackages = customerId == null
+            ? const AsyncValue<List<Map<String, dynamic>>>.data([])
+            : ref.watch(customerPackagesProvider(customerId));
+        return _OptionAndPackageStep(
+          options: options,
+          servicePackages: servicePackages,
+          customerPackages: customerPackages,
+          selectedOption: _option,
+          selectedPackage: _customerPackage,
+          onOptionSelected: (option) => setState(() => _option = option),
+          onPackageSelected: (package) =>
+              setState(() => _customerPackage = package),
+          onPackageCleared: () => setState(() => _customerPackage = null),
+        );
+      case 2:
+        return _DateStep(
+          selectedDate: _date,
+          onSelected: (date) {
+            if (BookingDateUtils.isPast(date)) return;
+            setState(() {
+              _date = BookingDateUtils.normalize(date);
+              _time = null;
+              _slot = null;
+            });
+          },
+        );
+      case 3:
+        return _TimeStep(
+          slots: slots,
+          selectedTime: _time,
+          onTimeSelected: (time) => setState(() {
+            _time = time;
+            _slot = null;
+          }),
+          onRetry: _refreshSlots,
+          onJoinWaitlist: () => _joinWaitlist(customerId),
+          joiningWaitlist: _joiningWaitlist,
+        );
+      case 4:
+        return _EmployeeStep(
+          slots: slots,
+          selectedTime: _time,
+          selectedSlot: _slot,
+          onSelected: (slot) => setState(() => _slot = slot),
+          onRetry: _refreshSlots,
+        );
+      case 5:
+        return _SummaryStep(
+          signedIn: signedIn,
+          service: _service,
+          option: _option,
+          package: _customerPackage,
+          date: _date,
+          time: _time,
+          slot: _slot,
+          guestNameController: _guestNameController,
+          guestSurnameController: _guestSurnameController,
+          guestPhoneController: _guestPhoneController,
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  void _selectService(CatalogService service) {
+    setState(() {
+      _service = service;
+      _option = null;
+      _customerPackage = null;
+      _time = null;
+      _slot = null;
+      _result = null;
+    });
+  }
+
+  void _goNext() {
+    if (!_canContinue(null)) return;
+    setState(() => _step++);
+  }
+
+  bool _canContinue(int? customerId) {
+    switch (_step) {
+      case 0:
+        return _service?.id != null;
+      case 1:
+        return _option?.id != null;
+      case 2:
+        return !BookingDateUtils.isPast(_date);
+      case 3:
+        return _time != null;
+      case 4:
+        return _slot?.employeeId.isNotEmpty == true;
+      case 5:
+        return _service?.id != null &&
+            _option?.id != null &&
+            _time != null &&
+            _slot?.employeeId.isNotEmpty == true &&
+            (customerId != null ||
+                (_guestFormKey.currentState?.validate() ?? false));
+      default:
+        return false;
+    }
+  }
+
+  void _refreshSlots() {
+    final serviceId = _service?.id;
+    if (serviceId == null) return;
+    ref.invalidate(
+      availableSlotsProvider(
+        AvailableSlotsQuery(
+          serviceId: serviceId,
+          date: BookingDateUtils.formatDate(_date),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmAndSubmit(int? customerId) async {
+    if (_submitting) return;
+    if (customerId == null &&
+        !(_guestFormKey.currentState?.validate() ?? false)) {
+      GlowSnackBar.showError(context, 'Misafir bilgilerini tamamla.');
+      return;
+    }
+    final confirmed = await GlowDialog.showConfirmation(
+      context,
+      title: 'Randevuyu onayla',
+      message: 'Seçtiğin saat backend tarafından tekrar kontrol edilecek.',
+      confirmLabel: 'Onayla',
+    );
+    if (confirmed != true) return;
+    await _submitAppointment(customerId);
+  }
+
+  Future<void> _submitAppointment(int? customerId) async {
+    final serviceId = _service?.id;
+    final optionId = _option?.id;
+    final employeeId = _slot?.employeeId;
+    final time = _time;
+    if (serviceId == null ||
+        optionId == null ||
+        employeeId == null ||
+        time == null) {
+      GlowSnackBar.showError(context, 'Randevu seçimlerini tamamla.');
       return;
     }
 
-    final selectedSlot = _firstSlot(slots);
-    if (selectedSlot == null) {
-      GlowSnackBar.showError(context, 'Seçilen tarih için müsait saat yok.');
-      return;
-    }
-
-    final employeeId = selectedSlot['employeeId']?.toString();
-    final availableTimes = selectedSlot['availableTimes'] as List?;
-    final fallbackTime = availableTimes?.isNotEmpty == true
-        ? availableTimes!.first.toString()
-        : _time;
-    final appointmentTime =
-        availableTimes?.map((item) => item.toString()).contains(_time) == true
-            ? _time
-            : fallbackTime;
-
-    if (employeeId == null || employeeId.isEmpty) {
-      GlowSnackBar.showError(context, 'Randevu için personel bulunamadı.');
-      return;
-    }
-
-    setState(() => _isCreating = true);
+    setState(() => _submitting = true);
     try {
-      await ref.read(glowBackendServiceProvider).createAppointment({
-        'customerId': customerId,
+      final query = AvailableSlotsQuery(
+        serviceId: serviceId,
+        date: BookingDateUtils.formatDate(_date),
+      );
+      final freshSlots = mapBookingSlots(
+        await ref.refresh(availableSlotsProvider(query).future),
+      );
+      final stillAvailable = freshSlots.any(
+        (slot) => slot.employeeId == employeeId && slot.hasTime(time),
+      );
+      if (!stillAvailable) {
+        throw Exception('Selected slot is not available');
+      }
+
+      final payload = <String, dynamic>{
+        if (customerId != null) 'customerId': customerId,
+        if (_customerPackage?.customerPackageId != null)
+          'customerPackageId': _customerPackage!.customerPackageId,
         'employeeId': employeeId,
         'serviceId': serviceId,
         'optionId': optionId,
-        'appointmentDate': _dateString(_selectedDate),
-        'appointmentTime': appointmentTime,
-      });
-      ref.invalidate(customerUpcomingAppointmentsProvider(customerId));
+        if (customerId == null) ...{
+          'customerName': _guestNameController.text.trim(),
+          'customerSurname': _guestSurnameController.text.trim(),
+          'phone': _guestPhoneController.text.trim(),
+        },
+        'appointmentDate': BookingDateUtils.formatDate(_date),
+        'appointmentTime': time,
+      };
+
+      final response =
+          await ref.read(glowBackendServiceProvider).createAppointment(payload);
+      if (customerId != null) {
+        ref.invalidate(customerUpcomingAppointmentsProvider(customerId));
+        ref.invalidate(customerPackagesProvider(customerId));
+      }
       if (!mounted) return;
-      GlowSnackBar.showSuccess(context, 'Randevunuz başarıyla oluşturuldu.');
+      setState(() {
+        _result = BookingResult.appointment(response);
+      });
+      GlowSnackBar.showSuccess(
+          context, 'Randevun backend tarafından oluşturuldu.');
     } catch (error) {
       if (!mounted) return;
-      GlowSnackBar.showError(context, error.toString());
+      GlowSnackBar.showError(
+        context,
+        bookingErrorMessage(error) ?? 'Randevu oluşturulamadı.',
+      );
     } finally {
-      if (mounted) {
-        setState(() => _isCreating = false);
-      }
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
-  static int? _intValue(List<Map<String, dynamic>> items, String key) {
-    if (items.isEmpty) return null;
-    final value = items.first[key];
-    if (value is int) return value;
-    return int.tryParse(value?.toString() ?? '');
-  }
-
-  static String? _stringValue(List<Map<String, dynamic>> items, String key) {
-    if (items.isEmpty) return null;
-    final value = items.first[key]?.toString();
-    return value == null || value.isEmpty ? null : value;
-  }
-
-  static Map<String, dynamic>? _firstSlot(List<Map<String, dynamic>> slots) {
-    for (final slot in slots) {
-      final times = slot['availableTimes'];
-      if (times is List && times.isNotEmpty) {
-        return slot;
-      }
+  Future<void> _joinWaitlist(int? customerId) async {
+    if (_joiningWaitlist) return;
+    final serviceId = _service?.id;
+    final optionId = _option?.id;
+    if (serviceId == null || optionId == null) {
+      GlowSnackBar.showError(
+          context, 'Bekleme listesi için hizmet ve alt hizmet seç.');
+      return;
     }
-    return slots.isEmpty ? null : slots.first;
-  }
+    if (customerId == null &&
+        !(_guestFormKey.currentState?.validate() ?? false)) {
+      setState(() => _step = 5);
+      GlowSnackBar.showError(context, 'Misafir bilgilerini tamamla.');
+      return;
+    }
 
-  static String _dateString(DateTime date) {
-    return date.toIso8601String().split('T').first;
+    setState(() => _joiningWaitlist = true);
+    try {
+      final response =
+          await ref.read(glowBackendServiceProvider).createWaitingListRecord({
+        if (customerId != null) 'customerId': customerId,
+        'serviceId': serviceId,
+        'optionId': optionId,
+        if (customerId == null) ...{
+          'customerName': _guestNameController.text.trim(),
+          'customerSurname': _guestSurnameController.text.trim(),
+          'phone': _guestPhoneController.text.trim(),
+        },
+        'preferredDate': BookingDateUtils.formatDate(_date),
+        if (_time != null) 'preferredStartTime': _time,
+        if (_time != null) 'preferredEndTime': _time,
+      });
+      if (customerId != null) {
+        ref.invalidate(customerWaitingListProvider(customerId));
+      }
+      if (!mounted) return;
+      setState(() {
+        _result = BookingResult.waitingList(response);
+      });
+      GlowSnackBar.showSuccess(context, 'Bekleme listesine eklendin.');
+    } catch (error) {
+      if (!mounted) return;
+      GlowSnackBar.showError(
+        context,
+        bookingErrorMessage(error) ?? 'Bekleme listesine eklenemedi.',
+      );
+    } finally {
+      if (mounted) setState(() => _joiningWaitlist = false);
+    }
   }
 }
 
-class _BookingFlow extends StatelessWidget {
-  const _BookingFlow();
+class BookingStepper extends StatelessWidget {
+  const BookingStepper({super.key, required this.currentStep});
+
+  final int currentStep;
 
   @override
   Widget build(BuildContext context) {
     final steps = [
       'Hizmet',
-      'Alt hizmet',
-      'Paket',
-      'Personel',
+      'Seçenek',
       'Tarih',
-      'Saat'
+      'Saat',
+      'Personel',
+      'Özet',
     ];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        for (var i = 0; i < steps.length; i++)
-          Expanded(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 11,
-                  backgroundColor:
-                      i <= 3 ? AppColors.action : AppColors.softBorder,
-                  child: Text(
-                    '${i + 1}',
-                    style: TextStyle(
-                      color: i <= 3 ? AppColors.white : AppColors.secondaryText,
-                      fontSize: 10,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (var i = 0; i < steps.length; i++) ...[
+            Semantics(
+              label: '${steps[i]} adımı',
+              selected: i == currentStep,
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 13,
+                    backgroundColor: i <= currentStep
+                        ? AppColors.action
+                        : AppColors.softBorder,
+                    child: Text(
+                      '${i + 1}',
+                      style: TextStyle(
+                        color: i <= currentStep
+                            ? AppColors.white
+                            : AppColors.secondaryText,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  steps[i],
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color:
-                            i <= 3 ? AppColors.action : AppColors.secondaryText,
-                      ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: 68,
+                    child: Text(
+                      steps[i],
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: i <= currentStep
+                                ? AppColors.action
+                                : AppColors.secondaryText,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            if (i != steps.length - 1)
+              Container(width: 22, height: 1, color: AppColors.softBorder),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StepSurface extends StatelessWidget {
+  const _StepSurface({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlowCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ServicePicker extends StatelessWidget {
+  const _ServicePicker({
+    required this.services,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<CatalogService> services;
+  final CatalogService? selected;
+  final ValueChanged<CatalogService> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (services.isEmpty) {
+      return const GlowEmptyState(title: 'Hizmet bulunamadı');
+    }
+    return Column(
+      children: [
+        for (final service in services) ...[
+          _SelectableTile(
+            title: service.name,
+            subtitle: service.description ?? 'Ayrıntılar için dokun.',
+            icon: Icons.spa_outlined,
+            selected: selected?.id == service.id,
+            onTap: service.id == null ? null : () => onSelected(service),
           ),
+          const SizedBox(height: 10),
+        ],
       ],
     );
   }
 }
 
-class _SelectionTile extends StatelessWidget {
-  const _SelectionTile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    this.selected = false,
+class _OptionAndPackageStep extends StatelessWidget {
+  const _OptionAndPackageStep({
+    required this.options,
+    required this.servicePackages,
+    required this.customerPackages,
+    required this.selectedOption,
+    required this.selectedPackage,
+    required this.onOptionSelected,
+    required this.onPackageSelected,
+    required this.onPackageCleared,
   });
 
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool selected;
+  final AsyncValue<List<Map<String, dynamic>>> options;
+  final AsyncValue<List<Map<String, dynamic>>> servicePackages;
+  final AsyncValue<List<Map<String, dynamic>>> customerPackages;
+  final CatalogOption? selectedOption;
+  final CustomerPackageOption? selectedPackage;
+  final ValueChanged<CatalogOption> onOptionSelected;
+  final ValueChanged<CustomerPackageOption> onPackageSelected;
+  final VoidCallback onPackageCleared;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: selected ? AppColors.action : AppColors.border,
-          width: selected ? 1.4 : 1,
-        ),
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: GlowCard(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            GlowMark(icon: icon, size: 40),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Alt hizmet', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 10),
+        options.when(
+          loading: () => const GlowLoading(message: 'Alt hizmetler yükleniyor'),
+          error: (error, _) => GlowError(message: bookingErrorMessage(error)!),
+          data: (items) {
+            final mapped = mapCatalogOptions(items);
+            if (mapped.isEmpty) {
+              return const GlowEmptyState(title: 'Alt hizmet bulunamadı');
+            }
+            return Column(
+              children: [
+                for (final option in mapped) ...[
+                  _SelectableTile(
+                    title: option.name,
+                    subtitle: option.priceText ?? 'Fiyat yok',
+                    icon: Icons.schedule,
+                    selected: selectedOption?.id == option.id,
+                    onTap: option.id == null
+                        ? null
+                        : () => onOptionSelected(option),
+                  ),
+                  const SizedBox(height: 10),
                 ],
-              ),
-            ),
-            Icon(
-              selected ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: selected ? AppColors.action : AppColors.border,
-              size: 20,
-            ),
-          ],
+              ],
+            );
+          },
         ),
-      ),
+        const SizedBox(height: 14),
+        Text('Paket kullanımı', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 10),
+        _SelectableTile(
+          title: 'Paket kullanmadan devam et',
+          subtitle: 'Randevu seçilen alt hizmet fiyatıyla oluşturulur.',
+          icon: Icons.block_outlined,
+          selected: selectedPackage == null,
+          onTap: onPackageCleared,
+        ),
+        const SizedBox(height: 10),
+        servicePackages.when(
+          loading: () => const GlowSkeleton(height: 72),
+          error: (error, _) => GlowError(message: bookingErrorMessage(error)!),
+          data: (packageItems) => customerPackages.when(
+            loading: () => const GlowSkeleton(height: 72),
+            error: (error, _) =>
+                GlowError(message: bookingErrorMessage(error)!),
+            data: (customerItems) {
+              final servicePackageModels = mapCatalogPackages(packageItems);
+              final usable = mapCustomerPackageOptions(customerItems)
+                  .where((item) => item.canUseFor(servicePackageModels))
+                  .toList();
+              if (usable.isEmpty) {
+                return const GlowEmptyState(
+                  title: 'Kullanılabilir paket yok',
+                  message:
+                      'Backend randevuda yalnızca satın alınmış müşteri paketini kabul eder.',
+                  icon: Icons.inventory_2_outlined,
+                );
+              }
+              return Column(
+                children: [
+                  for (final item in usable) ...[
+                    _SelectableTile(
+                      title: item.name,
+                      subtitle: '${item.remainingSession ?? 0} seans kaldı',
+                      icon: Icons.inventory_2_outlined,
+                      selected: selectedPackage?.customerPackageId ==
+                          item.customerPackageId,
+                      onTap: item.customerPackageId == null
+                          ? null
+                          : () => onPackageSelected(item),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _DateRow extends StatelessWidget {
-  const _DateRow({required this.selectedDate, required this.onSelected});
+class _DateStep extends StatelessWidget {
+  const _DateStep({required this.selectedDate, required this.onSelected});
 
   final DateTime selectedDate;
   final ValueChanged<DateTime> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    final dates = List.generate(
-      5,
-      (index) => DateTime.now().add(Duration(days: index + 1)),
-    );
-    const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final date in dates) ...[
-            Semantics(
-              button: true,
-              selected: _sameDay(date, selectedDate),
-              label: '${date.day} ${days[date.weekday - 1]}',
-              child: InkWell(
-                borderRadius: BorderRadius.circular(15),
-                onTap: () => onSelected(date),
-                child: Container(
-                  width: 55,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: _sameDay(date, selectedDate)
-                        ? AppColors.action
-                        : AppColors.white,
-                    border: Border.all(
-                      color: _sameDay(date, selectedDate)
-                          ? AppColors.action
-                          : AppColors.border,
-                    ),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        '${date.day}',
-                        style: TextStyle(
-                          color: _sameDay(date, selectedDate)
-                              ? AppColors.white
-                              : AppColors.primaryText,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text(
-                        days[date.weekday - 1],
-                        style: TextStyle(
-                          color: _sameDay(date, selectedDate)
-                              ? AppColors.white
-                              : AppColors.secondaryText,
-                          fontSize: 9,
-                        ),
-                      ),
-                    ],
-                  ),
+    final today = BookingDateUtils.today();
+    final dates =
+        List.generate(14, (index) => today.add(Duration(days: index)));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final date in dates) ...[
+                _DateChip(
+                  date: date,
+                  selected: BookingDateUtils.formatDate(date) ==
+                      BookingDateUtils.formatDate(selectedDate),
+                  onTap: () => onSelected(date),
                 ),
+                const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        GlowButton(
+          label: 'Takvimden seç',
+          icon: Icons.calendar_today_outlined,
+          variant: GlowButtonVariant.secondary,
+          onPressed: () async {
+            final picked = await showDatePicker(
+              context: context,
+              firstDate: today,
+              lastDate: today.add(const Duration(days: 90)),
+              initialDate:
+                  BookingDateUtils.isPast(selectedDate) ? today : selectedDate,
+              locale: const Locale('tr'),
+            );
+            if (picked != null) onSelected(picked);
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _TimeStep extends StatelessWidget {
+  const _TimeStep({
+    required this.slots,
+    required this.selectedTime,
+    required this.onTimeSelected,
+    required this.onRetry,
+    required this.onJoinWaitlist,
+    required this.joiningWaitlist,
+  });
+
+  final AsyncValue<List<Map<String, dynamic>>>? slots;
+  final String? selectedTime;
+  final ValueChanged<String> onTimeSelected;
+  final VoidCallback onRetry;
+  final VoidCallback onJoinWaitlist;
+  final bool joiningWaitlist;
+
+  @override
+  Widget build(BuildContext context) {
+    if (slots == null) return const GlowEmptyState(title: 'Önce hizmet seç');
+    return slots!.when(
+      loading: () => const GlowLoading(message: 'Uygun saatler alınıyor'),
+      error: (error, _) => GlowError(
+        message: bookingErrorMessage(error)!,
+        onRetry: onRetry,
+      ),
+      data: (items) {
+        final times = mapBookingSlots(items)
+            .expand((slot) => slot.availableTimes)
+            .toSet()
+            .toList()
+          ..sort();
+        if (times.isEmpty) {
+          return Column(
+            children: [
+              const GlowEmptyState(
+                title: 'Uygun saat yok',
+                message: 'Bu tarih için backend uygun zaman döndürmedi.',
+                icon: Icons.event_busy_outlined,
               ),
-            ),
-            const SizedBox(width: 8),
+              const SizedBox(height: 12),
+              GlowButton(
+                label: 'Bekleme Listesine Katıl',
+                icon: Icons.hourglass_bottom_outlined,
+                loading: joiningWaitlist,
+                fullWidth: true,
+                onPressed: onJoinWaitlist,
+              ),
+            ],
+          );
+        }
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final time in times)
+              ChoiceChip(
+                label: Text(time),
+                selected: selectedTime == time,
+                onSelected: (_) => onTimeSelected(time),
+              ),
           ],
+        );
+      },
+    );
+  }
+}
+
+class _EmployeeStep extends StatelessWidget {
+  const _EmployeeStep({
+    required this.slots,
+    required this.selectedTime,
+    required this.selectedSlot,
+    required this.onSelected,
+    required this.onRetry,
+  });
+
+  final AsyncValue<List<Map<String, dynamic>>>? slots;
+  final String? selectedTime;
+  final BookingSlot? selectedSlot;
+  final ValueChanged<BookingSlot> onSelected;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    if (selectedTime == null) {
+      return const GlowEmptyState(title: 'Önce saat seç');
+    }
+    if (slots == null) return const GlowEmptyState(title: 'Önce hizmet seç');
+    return slots!.when(
+      loading: () => const GlowLoading(message: 'Personel uygunluğu alınıyor'),
+      error: (error, _) => GlowError(
+        message: bookingErrorMessage(error)!,
+        onRetry: onRetry,
+      ),
+      data: (items) {
+        final employees = mapBookingSlots(items)
+            .where((slot) => slot.hasTime(selectedTime!))
+            .toList(growable: false);
+        if (employees.isEmpty) {
+          return const GlowEmptyState(
+            title: 'Personel bulunamadı',
+            message: 'Seçilen saat için backend personel döndürmedi.',
+          );
+        }
+        return Column(
+          children: [
+            for (final slot in employees) ...[
+              _SelectableTile(
+                title: slot.employeeName,
+                subtitle: selectedTime!,
+                icon: Icons.person_outline,
+                selected: selectedSlot?.employeeId == slot.employeeId,
+                onTap: () => onSelected(slot),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SummaryStep extends StatelessWidget {
+  const _SummaryStep({
+    required this.signedIn,
+    required this.service,
+    required this.option,
+    required this.package,
+    required this.date,
+    required this.time,
+    required this.slot,
+    required this.guestNameController,
+    required this.guestSurnameController,
+    required this.guestPhoneController,
+  });
+
+  final bool signedIn;
+  final CatalogService? service;
+  final CatalogOption? option;
+  final CustomerPackageOption? package;
+  final DateTime date;
+  final String? time;
+  final BookingSlot? slot;
+  final TextEditingController guestNameController;
+  final TextEditingController guestSurnameController;
+  final TextEditingController guestPhoneController;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _SummaryRow(label: 'Hizmet', value: service?.name ?? '-'),
+        _SummaryRow(label: 'Alt hizmet', value: option?.name ?? '-'),
+        _SummaryRow(label: 'Fiyat', value: option?.priceText ?? 'Fiyat yok'),
+        _SummaryRow(label: 'Paket', value: package?.name ?? 'Paket yok'),
+        _SummaryRow(label: 'Tarih', value: BookingDateUtils.formatDate(date)),
+        _SummaryRow(label: 'Saat', value: time ?? '-'),
+        _SummaryRow(label: 'Personel', value: slot?.employeeName ?? '-'),
+        if (!signedIn) ...[
+          const SizedBox(height: 14),
+          GlowTextField(
+            label: 'Ad',
+            controller: guestNameController,
+            textInputAction: TextInputAction.next,
+            validator: _required,
+          ),
+          const SizedBox(height: 10),
+          GlowTextField(
+            label: 'Soyad',
+            controller: guestSurnameController,
+            textInputAction: TextInputAction.next,
+            validator: _required,
+          ),
+          const SizedBox(height: 10),
+          GlowTextField(
+            label: 'Telefon',
+            controller: guestPhoneController,
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.done,
+            validator: _required,
+          ),
+        ],
+      ],
+    );
+  }
+
+  static String? _required(String? value) {
+    return value == null || value.trim().isEmpty ? 'Bu alan zorunludur.' : null;
+  }
+}
+
+class BookingResultCard extends StatelessWidget {
+  const BookingResultCard({super.key, required this.result});
+
+  final BookingResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlowCard(
+      backgroundColor: AppColors.roseTint,
+      borderColor: AppColors.primary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GlowMark(
+            icon: result.waitingList
+                ? Icons.hourglass_bottom_outlined
+                : Icons.check_circle_outline,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            result.waitingList
+                ? 'Bekleme listesine eklendin'
+                : 'Randevun oluşturuldu',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 10),
+          _SummaryRow(label: 'Hizmet', value: result.serviceName ?? '-'),
+          _SummaryRow(label: 'Alt hizmet', value: result.optionName ?? '-'),
+          if (!result.waitingList)
+            _SummaryRow(label: 'Personel', value: result.employeeName ?? '-'),
+          _SummaryRow(label: 'Tarih', value: result.date ?? '-'),
+          _SummaryRow(label: 'Saat', value: result.time ?? '-'),
+          if (result.price != null)
+            _SummaryRow(label: 'Fiyat', value: result.price!),
+          _SummaryRow(label: 'Durum', value: result.status ?? '-'),
         ],
       ),
     );
   }
-
-  static bool _sameDay(DateTime first, DateTime second) {
-    return first.year == second.year &&
-        first.month == second.month &&
-        first.day == second.day;
-  }
 }
 
-class _TimeGrid extends StatelessWidget {
-  const _TimeGrid({required this.selected, required this.onSelected});
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({
+    required this.step,
+    required this.canContinue,
+    required this.submitting,
+    required this.onBack,
+    required this.onNext,
+    required this.onSubmit,
+  });
 
-  final String selected;
-  final ValueChanged<String> onSelected;
+  final int step;
+  final bool canContinue;
+  final bool submitting;
+  final VoidCallback? onBack;
+  final VoidCallback? onNext;
+  final VoidCallback? onSubmit;
 
   @override
   Widget build(BuildContext context) {
-    final times = ['09:00', '10:30', '12:00', '13:30', '14:30', '16:00'];
-    return GridView.count(
-      crossAxisCount: 3,
-      crossAxisSpacing: 8,
-      mainAxisSpacing: 8,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 2.6,
+    return Row(
       children: [
-        for (final time in times)
-          OutlinedButton(
-            onPressed: () => onSelected(time),
-            style: OutlinedButton.styleFrom(
-              backgroundColor:
-                  selected == time ? AppColors.action : AppColors.white,
-              foregroundColor:
-                  selected == time ? AppColors.white : AppColors.secondaryText,
-              side: BorderSide(
-                color: selected == time ? AppColors.action : AppColors.border,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(time),
+        Expanded(
+          child: GlowButton(
+            label: 'Geri',
+            icon: Icons.chevron_left,
+            variant: GlowButtonVariant.outlined,
+            onPressed: onBack,
           ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: GlowButton(
+            label: step == 5 ? 'Onayla' : 'Devam',
+            icon: step == 5 ? Icons.check : Icons.chevron_right,
+            loading: submitting,
+            onPressed: canContinue ? (onSubmit ?? onNext) : null,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SelectableTile extends StatelessWidget {
+  const _SelectableTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.selected,
+    this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.roseTint : AppColors.white,
+            border: Border.all(
+              color: selected ? AppColors.action : AppColors.border,
+              width: selected ? 1.4 : 1,
+            ),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            children: [
+              GlowMark(icon: icon, size: 40),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 4),
+                    Text(subtitle,
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              Icon(
+                selected ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: selected ? AppColors.action : AppColors.border,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DateChip extends StatelessWidget {
+  const _DateChip({
+    required this.date,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final DateTime date;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '${date.day} ${BookingDateUtils.dayLabel(date)}',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        onTap: onTap,
+        child: Container(
+          width: 58,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.action : AppColors.white,
+            border: Border.all(
+              color: selected ? AppColors.action : AppColors.border,
+            ),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Column(
+            children: [
+              Text(
+                '${date.day}',
+                style: TextStyle(
+                  color: selected ? AppColors.white : AppColors.primaryText,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                BookingDateUtils.dayLabel(date),
+                style: TextStyle(
+                  color: selected ? AppColors.white : AppColors.secondaryText,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UpcomingAppointments extends ConsumerWidget {
+  const _UpcomingAppointments({required this.customerId});
+
+  final int? customerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (customerId == null) {
+      return const GlowEmptyState(
+        title: 'Misafir randevusu',
+        message: 'Randevularını listelemek için müşteri hesabıyla giriş yap.',
+        icon: Icons.lock_outline,
+      );
+    }
+    final appointments =
+        ref.watch(customerUpcomingAppointmentsProvider(customerId!));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Yaklaşan Randevularım',
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 12),
+        appointments.when(
+          loading: () => const GlowLoading(message: 'Randevular yükleniyor'),
+          error: (error, _) => GlowError(
+            message: bookingErrorMessage(error)!,
+            onRetry: () => ref
+                .invalidate(customerUpcomingAppointmentsProvider(customerId!)),
+          ),
+          data: (items) => items.isEmpty
+              ? const GlowEmptyState(title: 'Yaklaşan randevu yok')
+              : Column(
+                  children: [
+                    for (final appointment in items) ...[
+                      GlowAppointmentCard(
+                        title:
+                            appointment['serviceName']?.toString() ?? 'Randevu',
+                        time:
+                            '${appointment['appointmentDate'] ?? ''} ${BookingDateUtils.normalizeTime(appointment['appointmentTime']) ?? ''}',
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
+                ),
+        ),
       ],
     );
   }
