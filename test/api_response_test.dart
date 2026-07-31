@@ -18,4 +18,21 @@ void main() {
       throwsA(isA<ApiException>()),
     );
   });
+
+  test('safeApiMessage yetki ve validation hatalarını kullanıcı dostu eşler',
+      () {
+    expect(
+      safeApiMessage(statusCode: 403, rawMessage: 'Access denied'),
+      'Bu işlem için yetkin bulunmuyor.',
+    );
+    expect(
+      safeApiMessage(statusCode: 409, rawMessage: 'conflict'),
+      'Bu kayıt başka bir veriyle çakışıyor. Bilgileri kontrol et.',
+    );
+    expect(
+      safeApiMessage(
+          statusCode: 400, rawMessage: 'firstName: must not be blank'),
+      'Form bilgilerini kontrol edip tekrar dene.',
+    );
+  });
 }
