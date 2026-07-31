@@ -134,6 +134,16 @@ final workingHoursProvider =
   return ref.watch(glowBackendServiceProvider).getWorkingHours();
 });
 
+final employeeAppointmentsProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, EmployeeAppointmentsQuery>(
+        (ref, query) {
+  return ref.watch(glowBackendServiceProvider).getEmployeeAppointments(
+        employeeId: query.employeeId,
+        startDate: query.startDate,
+        endDate: query.endDate,
+      );
+});
+
 final holidaysProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, DateRangeQuery>((ref, query) {
   return ref.watch(glowBackendServiceProvider).getHolidays(
@@ -188,6 +198,29 @@ class DateRangeQuery {
 
   @override
   int get hashCode => Object.hash(startDate, endDate);
+}
+
+class EmployeeAppointmentsQuery {
+  const EmployeeAppointmentsQuery({
+    required this.employeeId,
+    required this.startDate,
+    required this.endDate,
+  });
+
+  final String employeeId;
+  final String startDate;
+  final String endDate;
+
+  @override
+  bool operator ==(Object other) {
+    return other is EmployeeAppointmentsQuery &&
+        other.employeeId == employeeId &&
+        other.startDate == startDate &&
+        other.endDate == endDate;
+  }
+
+  @override
+  int get hashCode => Object.hash(employeeId, startDate, endDate);
 }
 
 class AuthController extends StateNotifier<AsyncValue<AuthSession?>> {
