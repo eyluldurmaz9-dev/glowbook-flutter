@@ -1,173 +1,117 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_spacing.dart';
+import '../../core/routes/app_routes.dart';
 import '../../core/widgets/glow_widgets.dart';
 import '../../providers/app_providers.dart';
+import '../appointment/booking_models.dart';
+import '../employee/employee_dashboard_models.dart';
 
-class AdminDashboardPage extends ConsumerWidget {
+enum _AdminSection {
+  overview('Genel Bakış', Icons.dashboard_outlined),
+  services('Hizmetler', Icons.spa_outlined),
+  packages('Paketler', Icons.inventory_2_outlined),
+  employees('Personel', Icons.badge_outlined),
+  schedule('Çalışma Saatleri', Icons.schedule_outlined),
+  appointments('Randevular', Icons.calendar_month_outlined),
+  customers('Müşteriler', Icons.people_outline);
+
+  const _AdminSection(this.label, this.icon);
+
+  final String label;
+  final IconData icon;
+}
+
+class AdminDashboardPage extends ConsumerStatefulWidget {
   const AdminDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final services = ref.watch(servicesProvider);
-    final employees = ref.watch(employeesProvider);
-    final customers = ref.watch(customersProvider);
-    final wide = MediaQuery.sizeOf(context).width >= 900;
+  ConsumerState<AdminDashboardPage> createState() => _AdminDashboardPageState();
+}
 
+class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
+  _AdminSection _section = _AdminSection.overview;
+  String? _selectedEmployeeId;
+  DateTime _selectedWeek = BookingDateUtils.today();
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = ref.watch(authControllerProvider);
+    return auth.when(
+      loading: () => const Scaffold(
+        body: SafeArea(child: GlowLoading(message: 'Yetki kontrol ediliyor')),
+      ),
+      error: (error, _) => Scaffold(
+        body: SafeArea(
+          child: GlowError(
+            title: 'Oturum kontrol edilemedi',
+            message: _safeAdminError(error),
+            onRetry: () =>
+                ref.read(authControllerProvider.notifier).loadSession(),
+          ),
+        ),
+      ),
+      data: (session) {
+        if (session?.role?.toUpperCase() != 'ADMIN') {
+          return Scaffold(
+            body: SafeArea(
+              child: GlowResponsivePage(
+                child: GlowError(
+                  title: 'Admin yetkisi gerekli',
+                  message:
+                      'Bu yönetim alanı yalnızca admin hesabıyla kullanılabilir.',
+                  onRetry: () => context.go(AppRoutes.login),
+                ),
+              ),
+            ),
+          );
+        }
+        return _buildAdminShell(context);
+      },
+    );
+  }
+
+  Widget _buildAdminShell(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final wide = width >= 980;
     return Scaffold(
       backgroundColor: AppColors.petal,
+      appBar: wide
+          ? null
+          : GlowAppBar(
+              title: 'Yönetim',
+              actions: [
+                PopupMenuButton<_AdminSection>(
+                  tooltip: 'Bölüm seç',
+                  onSelected: (section) => setState(() => _section = section),
+                  itemBuilder: (context) => [
+                    for (final section in _AdminSection.values)
+                      PopupMenuItem(
+                        value: section,
+                        child: Text(section.label),
+                      ),
+                  ],
+                ),
+              ],
+            ),
       body: SafeArea(
         child: Row(
           children: [
-            if (wide) const _AdminSidebar(),
+            if (wide)
+              _AdminSidebar(
+                selected: _section,
+                onSelected: (section) => setState(() => _section = section),
+                onLogout: _logout,
+              ),
             Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(wide ? 30 : 18),
-                child: ListView(
-                  children: [
-                    Row(
-                      children: [
-                        if (!wide) const GlowBrand(compact: true),
-                        if (!wide) const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const GlowEyebrow('Bugünün görünümü'),
-                              const SizedBox(height: 3),
-                              Text(
-                                'Genel Bakış',
-                                style:
-                                    Theme.of(context).textTheme.headlineMedium,
-                              ),
-                              Text(
-                                'Lal Beauty Studio’nun güncel işletme özeti.',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const GlowIconButton(
-                          icon: Icons.notifications_outlined,
-                          tooltip: 'Bildirimler',
-                          onPressed: _noop,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final columns = constraints.maxWidth > 900
-                            ? 4
-                            : constraints.maxWidth > 560
-                                ? 2
-                                : 1;
-                        return GridView.count(
-                          crossAxisCount: columns,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          childAspectRatio: columns == 1 ? 3.4 : 2.15,
-                          crossAxisSpacing: 14,
-                          mainAxisSpacing: 14,
-                          children: [
-                            const GlowStatCard(
-                              title: 'Bugünkü randevular',
-                              value: '28',
-                              icon: Icons.calendar_today_outlined,
-                            ),
-                            const GlowStatCard(
-                              title: 'Bu ay ciro',
-                              value: '184K TL',
-                              icon: Icons.payments_outlined,
-                            ),
-                            _StatFromAsync(
-                              value: customers,
-                              title: 'Müşteriler',
-                              icon: Icons.people_outline,
-                            ),
-                            _StatFromAsync(
-                              value: employees,
-                              title: 'Personeller',
-                              icon: Icons.badge_outlined,
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final split = constraints.maxWidth > 820;
-                        final panels = [
-                          const _ChartPanel(),
-                          const _SchedulePanel(),
-                        ];
-                        return split
-                            ? Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(flex: 3, child: panels[0]),
-                                  const SizedBox(width: 18),
-                                  Expanded(flex: 2, child: panels[1]),
-                                ],
-                              )
-                            : Column(
-                                children: [
-                                  panels[0],
-                                  const SizedBox(height: 18),
-                                  panels[1],
-                                ],
-                              );
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final split = constraints.maxWidth > 760;
-                        return split
-                            ? Row(
-                                children: [
-                                  Expanded(
-                                    child: _ListPanel(
-                                      title: 'En çok tercih edilenler',
-                                      asyncValue: services,
-                                      titleKey: 'serviceName',
-                                      icon: Icons.auto_awesome,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 18),
-                                  Expanded(
-                                    child: _ListPanel(
-                                      title: 'Personel performansı',
-                                      asyncValue: employees,
-                                      titleKey: 'firstName',
-                                      icon: Icons.workspace_premium_outlined,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Column(
-                                children: [
-                                  _ListPanel(
-                                    title: 'En çok tercih edilenler',
-                                    asyncValue: services,
-                                    titleKey: 'serviceName',
-                                    icon: Icons.auto_awesome,
-                                  ),
-                                  const SizedBox(height: 18),
-                                  _ListPanel(
-                                    title: 'Personel performansı',
-                                    asyncValue: employees,
-                                    titleKey: 'firstName',
-                                    icon: Icons.workspace_premium_outlined,
-                                  ),
-                                ],
-                              );
-                      },
-                    ),
-                  ],
-                ),
+              child: GlowResponsivePage(
+                maxWidth: 1280,
+                padding: EdgeInsets.all(wide ? 28 : 16),
+                child: _sectionBody(),
               ),
             ),
           ],
@@ -175,63 +119,350 @@ class AdminDashboardPage extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _sectionBody() {
+    switch (_section) {
+      case _AdminSection.overview:
+        return _OverviewSection(
+            onOpen: (section) => setState(() => _section = section));
+      case _AdminSection.services:
+        return _ServicesSection(
+          busy: _busy,
+          onCreate: () => _openServiceForm(),
+          onEdit: (item) => _openServiceForm(item: item),
+          onDelete: _deactivateService,
+          onOptionCreate: _openOptionForm,
+          onOptionEdit: (serviceId, item) =>
+              _openOptionForm(serviceId: serviceId, item: item),
+        );
+      case _AdminSection.packages:
+        return _PackagesSection(
+          busy: _busy,
+          onCreate: (serviceId) => _openPackageForm(serviceId: serviceId),
+          onEdit: (serviceId, item) =>
+              _openPackageForm(serviceId: serviceId, item: item),
+        );
+      case _AdminSection.employees:
+        return _EmployeesSection(
+          busy: _busy,
+          onCreate: () => _openEmployeeForm(),
+          onEdit: (item) => _openEmployeeForm(item: item),
+          onDeactivate: _deactivateEmployee,
+        );
+      case _AdminSection.schedule:
+        return _ScheduleSection(
+          busy: _busy,
+          onCreateWorkingHour: () => _openWorkingHourForm(),
+          onEditWorkingHour: (item) => _openWorkingHourForm(item: item),
+          onCreateHoliday: _openHolidayForm,
+        );
+      case _AdminSection.appointments:
+        return _AppointmentsSection(
+          selectedEmployeeId: _selectedEmployeeId,
+          selectedWeek: _selectedWeek,
+          busy: _busy,
+          onEmployeeChanged: (id) => setState(() => _selectedEmployeeId = id),
+          onWeekChanged: (date) => setState(() => _selectedWeek = date),
+          onApprove: (query, item) =>
+              _updateAppointment(query, item, 'approve'),
+          onComplete: (query, item) =>
+              _updateAppointment(query, item, 'complete'),
+          onCancel: _cancelAppointment,
+        );
+      case _AdminSection.customers:
+        return const _CustomersSection();
+    }
+  }
+
+  Future<void> _runAdminAction(Future<void> Function() action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await action();
+    } catch (error) {
+      if (mounted) GlowSnackBar.showError(context, _safeAdminError(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _openServiceForm({Map<String, dynamic>? item}) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _ServiceFormDialog(item: item),
+    );
+    if (result == null) return;
+    await _runAdminAction(() async {
+      final service = ref.read(glowBackendServiceProvider);
+      final id = _intValue(item?['serviceId']);
+      if (id == null) {
+        await service.createService(result);
+      } else {
+        await service.updateService(id, result);
+      }
+      ref.invalidate(servicesProvider);
+      ref.invalidate(allServicePackagesProvider);
+      if (mounted) GlowSnackBar.showSuccess(context, 'Hizmet kaydedildi');
+    });
+  }
+
+  Future<void> _deactivateService(Map<String, dynamic> item) async {
+    final id = _intValue(item['serviceId']);
+    if (id == null) return;
+    final confirmed = await _confirm(
+      title: 'Hizmeti pasifleştir',
+      message: '${item['serviceName'] ?? 'Bu hizmet'} pasifleştirilsin mi?',
+    );
+    if (!confirmed) return;
+    await _runAdminAction(() async {
+      await ref.read(glowBackendServiceProvider).deactivateService(id);
+      ref.invalidate(servicesProvider);
+      ref.invalidate(allServicePackagesProvider);
+      if (mounted) GlowSnackBar.showSuccess(context, 'Hizmet pasifleştirildi');
+    });
+  }
+
+  Future<void> _openOptionForm({
+    required int serviceId,
+    Map<String, dynamic>? item,
+  }) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _OptionFormDialog(item: item),
+    );
+    if (result == null) return;
+    await _runAdminAction(() async {
+      final service = ref.read(glowBackendServiceProvider);
+      final id = _intValue(item?['optionId']);
+      if (id == null) {
+        await service.createServiceOption(serviceId, result);
+      } else {
+        await service.updateServiceOption(id, result);
+      }
+      ref.invalidate(serviceOptionsProvider(serviceId));
+      if (mounted) {
+        GlowSnackBar.showSuccess(context, 'Fiyat seçeneği kaydedildi');
+      }
+    });
+  }
+
+  Future<void> _openPackageForm({
+    required int serviceId,
+    Map<String, dynamic>? item,
+  }) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _PackageFormDialog(item: item),
+    );
+    if (result == null) return;
+    await _runAdminAction(() async {
+      final service = ref.read(glowBackendServiceProvider);
+      final id = _intValue(item?['packageId']);
+      if (id == null) {
+        await service.createPackage(serviceId, result);
+      } else {
+        await service.updatePackage(id, result);
+      }
+      ref.invalidate(servicePackagesProvider(serviceId));
+      ref.invalidate(allServicePackagesProvider);
+      if (mounted) GlowSnackBar.showSuccess(context, 'Paket kaydedildi');
+    });
+  }
+
+  Future<void> _openEmployeeForm({Map<String, dynamic>? item}) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _EmployeeFormDialog(item: item),
+    );
+    if (result == null) return;
+    await _runAdminAction(() async {
+      final service = ref.read(glowBackendServiceProvider);
+      final id = item?['employeeId']?.toString();
+      if (id == null || id.isEmpty) {
+        await service.createEmployee(result);
+      } else {
+        await service.updateEmployee(id, result);
+      }
+      ref.invalidate(employeesProvider);
+      if (mounted) GlowSnackBar.showSuccess(context, 'Personel kaydedildi');
+    });
+  }
+
+  Future<void> _deactivateEmployee(Map<String, dynamic> item) async {
+    final id = item['employeeId']?.toString();
+    if (id == null || id.isEmpty) return;
+    final confirmed = await _confirm(
+      title: 'Personeli pasifleştir',
+      message: '${_employeeName(item)} pasifleştirilsin mi?',
+    );
+    if (!confirmed) return;
+    await _runAdminAction(() async {
+      await ref.read(glowBackendServiceProvider).deactivateEmployee(id);
+      ref.invalidate(employeesProvider);
+      if (mounted) {
+        GlowSnackBar.showSuccess(context, 'Personel pasifleştirildi');
+      }
+    });
+  }
+
+  Future<void> _openWorkingHourForm({Map<String, dynamic>? item}) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _WorkingHourFormDialog(item: item),
+    );
+    if (result == null) return;
+    await _runAdminAction(() async {
+      final id = _intValue(item?['workingHourId']);
+      final service = ref.read(glowBackendServiceProvider);
+      if (id == null) {
+        await service.createWorkingHour(result);
+      } else {
+        await service.updateWorkingHour(id, result);
+      }
+      ref.invalidate(workingHoursProvider);
+      if (mounted) {
+        GlowSnackBar.showSuccess(context, 'Çalışma saati kaydedildi');
+      }
+    });
+  }
+
+  Future<void> _openHolidayForm() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => const _HolidayFormDialog(),
+    );
+    if (result == null) return;
+    await _runAdminAction(() async {
+      await ref.read(glowBackendServiceProvider).createHoliday(result);
+      ref.invalidate(holidaysProvider(_adminHolidayQuery()));
+      if (mounted) GlowSnackBar.showSuccess(context, 'Tatil günü eklendi');
+    });
+  }
+
+  Future<void> _updateAppointment(
+    EmployeeAppointmentsQuery query,
+    Map<String, dynamic> item,
+    String action,
+  ) async {
+    final id = _intValue(item['appointmentId']);
+    if (id == null) return;
+    await _runAdminAction(() async {
+      final service = ref.read(glowBackendServiceProvider);
+      if (action == 'approve') {
+        await service.approveAppointment(id);
+      } else {
+        await service.completeAppointment(id);
+      }
+      ref.invalidate(employeeAppointmentsProvider(query));
+      if (mounted) {
+        GlowSnackBar.showSuccess(
+          context,
+          action == 'approve' ? 'Randevu onaylandı' : 'Randevu tamamlandı',
+        );
+      }
+    });
+  }
+
+  Future<void> _cancelAppointment(
+    EmployeeAppointmentsQuery query,
+    Map<String, dynamic> item,
+  ) async {
+    final id = _intValue(item['appointmentId']);
+    if (id == null) return;
+    final confirmed = await _confirm(
+      title: 'Randevuyu iptal et',
+      message: '${item['serviceName'] ?? 'Randevu'} iptal edilsin mi?',
+    );
+    if (!confirmed) return;
+    await _runAdminAction(() async {
+      await ref.read(glowBackendServiceProvider).cancelAppointment(id,
+          cancellationReason: 'Admin tarafından iptal edildi');
+      ref.invalidate(employeeAppointmentsProvider(query));
+      if (mounted) GlowSnackBar.showSuccess(context, 'Randevu iptal edildi');
+    });
+  }
+
+  Future<bool> _confirm(
+      {required String title, required String message}) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              GlowButton(
+                label: 'Vazgeç',
+                variant: GlowButtonVariant.text,
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
+              GlowButton(
+                label: 'Onayla',
+                icon: Icons.check,
+                onPressed: () => Navigator.of(context).pop(true),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _logout() async {
+    await ref.read(authControllerProvider.notifier).logout();
+    if (mounted) context.go(AppRoutes.welcome);
+  }
 }
 
-void _noop() {}
-
 class _AdminSidebar extends StatelessWidget {
-  const _AdminSidebar();
+  const _AdminSidebar({
+    required this.selected,
+    required this.onSelected,
+    required this.onLogout,
+  });
+
+  final _AdminSection selected;
+  final ValueChanged<_AdminSection> onSelected;
+  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      ['Genel Bakış', Icons.home_outlined],
-      ['Randevular', Icons.calendar_today_outlined],
-      ['Müşteriler', Icons.people_outline],
-      ['Personeller', Icons.badge_outlined],
-      ['Hizmetler', Icons.spa_outlined],
-      ['Paketler', Icons.inventory_2_outlined],
-      ['Çalışma Saatleri', Icons.schedule],
-      ['Tatiller', Icons.beach_access_outlined],
-      ['Bildirimler', Icons.notifications_outlined],
-      ['Raporlar', Icons.bar_chart],
-      ['Ayarlar', Icons.settings_outlined],
-    ];
     return Container(
-      width: 240,
+      width: 256,
       color: AppColors.white,
       padding: const EdgeInsets.fromLTRB(18, 28, 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(
-            padding: EdgeInsets.fromLTRB(13, 0, 13, 30),
+            padding: EdgeInsets.fromLTRB(12, 0, 12, 24),
             child: GlowBrand(),
           ),
-          for (var i = 0; i < items.length; i++)
+          for (final section in _AdminSection.values)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: 6),
               child: TextButton.icon(
-                onPressed: () {},
-                icon: Icon(items[i][1] as IconData, size: 16),
-                label: Text(items[i][0] as String),
+                key: Key('admin_nav_${section.name}'),
+                onPressed: () => onSelected(section),
+                icon: Icon(section.icon, size: 18),
+                label: Text(section.label),
                 style: TextButton.styleFrom(
-                  foregroundColor:
-                      i == 0 ? AppColors.action : AppColors.secondaryText,
-                  backgroundColor:
-                      i == 0 ? AppColors.roseTint : Colors.transparent,
+                  foregroundColor: selected == section
+                      ? AppColors.action
+                      : AppColors.secondaryText,
+                  backgroundColor: selected == section
+                      ? AppColors.roseTint
+                      : Colors.transparent,
                   alignment: Alignment.centerLeft,
-                  minimumSize: const Size.fromHeight(44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  minimumSize: const Size.fromHeight(46),
                 ),
               ),
             ),
           const Spacer(),
-          const GlowSoftNotice(
-            title: 'Yardım Merkezi',
-            message: 'Desteğe mi ihtiyacınız var?',
+          GlowButton(
+            label: 'Oturumu kapat',
+            icon: Icons.logout,
+            variant: GlowButtonVariant.outlined,
+            fullWidth: true,
+            onPressed: onLogout,
           ),
         ],
       ),
@@ -239,187 +470,1401 @@ class _AdminSidebar extends StatelessWidget {
   }
 }
 
-class _ChartPanel extends StatelessWidget {
-  const _ChartPanel();
+class _OverviewSection extends ConsumerWidget {
+  const _OverviewSection({required this.onOpen});
+
+  final ValueChanged<_AdminSection> onOpen;
 
   @override
-  Widget build(BuildContext context) {
-    final values = [54, 67, 48, 82, 61, 93, 73];
-    final days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final services = ref.watch(servicesProvider);
+    final packages = ref.watch(allServicePackagesProvider);
+    final employees = ref.watch(employeesProvider);
+    final customers = ref.watch(customersProvider);
+    return ListView(
+      children: [
+        _AdminHeader(
+          title: 'Genel Bakış',
+          subtitle: 'Gerçek API verilerine bağlı yönetim özeti.',
+          actions: [
+            GlowButton(
+              key: const Key('admin_service_create'),
+              label: 'Hizmet Ekle',
+              icon: Icons.add,
+              onPressed: () => onOpen(_AdminSection.services),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth > 940
+                ? 4
+                : constraints.maxWidth > 560
+                    ? 2
+                    : 1;
+            return GridView.count(
+              crossAxisCount: columns,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: columns == 1 ? 3.0 : 2.25,
+              crossAxisSpacing: AppSpacing.md,
+              mainAxisSpacing: AppSpacing.md,
+              children: [
+                _AsyncStat(
+                    title: 'Hizmetler', state: services, icon: Icons.spa),
+                _AsyncStat(
+                  title: 'Paketler',
+                  state: packages,
+                  icon: Icons.inventory_2_outlined,
+                ),
+                _AsyncStat(
+                  title: 'Personel',
+                  state: employees,
+                  icon: Icons.badge_outlined,
+                ),
+                _AsyncStat(
+                  title: 'Müşteriler',
+                  state: customers,
+                  icon: Icons.people_outline,
+                ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _UnsupportedPanel(),
+      ],
+    );
+  }
+}
+
+class _ServicesSection extends ConsumerWidget {
+  const _ServicesSection({
+    required this.busy,
+    required this.onCreate,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onOptionCreate,
+    required this.onOptionEdit,
+  });
+
+  final bool busy;
+  final VoidCallback onCreate;
+  final ValueChanged<Map<String, dynamic>> onEdit;
+  final ValueChanged<Map<String, dynamic>> onDelete;
+  final void Function({required int serviceId}) onOptionCreate;
+  final void Function(int serviceId, Map<String, dynamic> item) onOptionEdit;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final services = ref.watch(servicesProvider);
+    return ListView(
+      children: [
+        _AdminHeader(
+          title: 'Hizmet Yönetimi',
+          subtitle: 'Hizmetler ve fiyat seçenekleri.',
+          actions: [
+            GlowButton(
+              key: const Key('admin_service_create_form'),
+              label: 'Hizmet Ekle',
+              icon: Icons.add,
+              onPressed: busy ? null : onCreate,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        services.when(
+          loading: () => const GlowLoading(message: 'Hizmetler yükleniyor'),
+          error: (error, _) => GlowError(
+            message: _safeAdminError(error),
+            onRetry: () => ref.invalidate(servicesProvider),
+          ),
+          data: (items) => items.isEmpty
+              ? const GlowEmptyState(title: 'Hizmet bulunamadı')
+              : Column(
+                  children: [
+                    for (final item in items) ...[
+                      _ServiceAdminCard(
+                        item: item,
+                        busy: busy,
+                        onEdit: () => onEdit(item),
+                        onDelete: () => onDelete(item),
+                        onOptionCreate: () {
+                          final id = _intValue(item['serviceId']);
+                          if (id != null) onOptionCreate(serviceId: id);
+                        },
+                        onOptionEdit: (option) {
+                          final id = _intValue(item['serviceId']);
+                          if (id != null) onOptionEdit(id, option);
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                    ],
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ServiceAdminCard extends ConsumerWidget {
+  const _ServiceAdminCard({
+    required this.item,
+    required this.busy,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onOptionCreate,
+    required this.onOptionEdit,
+  });
+
+  final Map<String, dynamic> item;
+  final bool busy;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onOptionCreate;
+  final ValueChanged<Map<String, dynamic>> onOptionEdit;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final serviceId = _intValue(item['serviceId']);
+    final options = serviceId == null
+        ? const AsyncValue<List<Map<String, dynamic>>>.data([])
+        : ref.watch(serviceOptionsProvider(serviceId));
     return GlowCard(
-      padding: const EdgeInsets.all(21),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Haftalık randevu görünümü',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 22),
-          SizedBox(
-            height: 200,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+          _RowHeader(
+            title: item['serviceName']?.toString() ?? 'Hizmet',
+            subtitle: item['description']?.toString(),
+            trailing: Wrap(
+              spacing: AppSpacing.sm,
               children: [
-                for (var i = 0; i < values.length; i++) ...[
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        FractionallySizedBox(
-                          widthFactor: .55,
-                          child: Container(
-                            height: values[i] * 1.7,
-                            decoration: BoxDecoration(
-                              color:
-                                  i == 5 ? AppColors.action : AppColors.blush,
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(7),
-                                bottom: Radius.circular(3),
-                              ),
+                GlowButton(
+                  label: 'Düzenle',
+                  icon: Icons.edit_outlined,
+                  variant: GlowButtonVariant.outlined,
+                  onPressed: busy ? null : onEdit,
+                ),
+                GlowButton(
+                  key: const Key('admin_service_delete'),
+                  label: 'Sil',
+                  icon: Icons.delete_outline,
+                  variant: GlowButtonVariant.outlined,
+                  onPressed: busy ? null : onDelete,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Text('Fiyat seçenekleri',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: busy ? null : onOptionCreate,
+                icon: const Icon(Icons.add),
+                label: const Text('Seçenek Ekle'),
+              ),
+            ],
+          ),
+          options.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(AppSpacing.md),
+              child: LinearProgressIndicator(),
+            ),
+            error: (error, _) => Text(_safeAdminError(error)),
+            data: (items) => items.isEmpty
+                ? const Text('Fiyat seçeneği yok')
+                : Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      for (final option in items)
+                        ActionChip(
+                          label: Text(
+                            '${option['optionName'] ?? 'Seçenek'} • ${option['price'] ?? '-'}',
+                          ),
+                          onPressed: busy ? null : () => onOptionEdit(option),
+                        ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PackagesSection extends ConsumerWidget {
+  const _PackagesSection({
+    required this.busy,
+    required this.onCreate,
+    required this.onEdit,
+  });
+
+  final bool busy;
+  final ValueChanged<int> onCreate;
+  final void Function(int serviceId, Map<String, dynamic> item) onEdit;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final services = ref.watch(servicesProvider);
+    final packages = ref.watch(allServicePackagesProvider);
+    return ListView(
+      children: [
+        _AdminHeader(
+          title: 'Paket Yönetimi',
+          subtitle: 'Paket oluşturma, fiyat ve seans yönetimi.',
+          actions: [
+            services.maybeWhen(
+              data: (items) => DropdownButton<int>(
+                hint: const Text('Paket Ekle'),
+                items: [
+                  for (final service in items)
+                    if (_intValue(service['serviceId']) != null)
+                      DropdownMenuItem(
+                        value: _intValue(service['serviceId']),
+                        child: Text(
+                            service['serviceName']?.toString() ?? 'Hizmet'),
+                      ),
+                ],
+                onChanged: busy || items.isEmpty
+                    ? null
+                    : (id) {
+                        if (id != null) onCreate(id);
+                      },
+              ),
+              orElse: () => const SizedBox.shrink(),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        packages.when(
+          loading: () => const GlowLoading(message: 'Paketler yükleniyor'),
+          error: (error, _) => GlowError(
+            message: _safeAdminError(error),
+            onRetry: () => ref.invalidate(allServicePackagesProvider),
+          ),
+          data: (items) => items.isEmpty
+              ? const GlowEmptyState(title: 'Paket bulunamadı')
+              : _AdminTable(
+                  columns: const [
+                    DataColumn(label: Text('Paket')),
+                    DataColumn(label: Text('Hizmet')),
+                    DataColumn(label: Text('Seans')),
+                    DataColumn(label: Text('Fiyat')),
+                    DataColumn(label: Text('Durum')),
+                    DataColumn(label: Text('İşlem')),
+                  ],
+                  rows: [
+                    for (final item in items)
+                      DataRow(
+                        cells: [
+                          DataCell(
+                              Text(item['packageName']?.toString() ?? '-')),
+                          DataCell(
+                              Text(item['serviceName']?.toString() ?? '-')),
+                          DataCell(
+                              Text(item['totalSession']?.toString() ?? '-')),
+                          DataCell(Text(item['price']?.toString() ?? '-')),
+                          DataCell(Text(
+                              item['active'] == false ? 'Pasif' : 'Aktif')),
+                          DataCell(
+                            TextButton(
+                              key: const Key('admin_package_edit'),
+                              onPressed: busy
+                                  ? null
+                                  : () {
+                                      final serviceId =
+                                          _intValue(item['serviceId']);
+                                      if (serviceId != null) {
+                                        onEdit(serviceId, item);
+                                      }
+                                    },
+                              child: const Text('Düzenle'),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(days[i],
-                            style: Theme.of(context).textTheme.labelSmall),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
+                        ],
+                      ),
+                  ],
+                ),
+        ),
+      ],
     );
   }
 }
 
-class _SchedulePanel extends StatelessWidget {
-  const _SchedulePanel();
+class _EmployeesSection extends ConsumerWidget {
+  const _EmployeesSection({
+    required this.busy,
+    required this.onCreate,
+    required this.onEdit,
+    required this.onDeactivate,
+  });
+
+  final bool busy;
+  final VoidCallback onCreate;
+  final ValueChanged<Map<String, dynamic>> onEdit;
+  final ValueChanged<Map<String, dynamic>> onDeactivate;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final employees = ref.watch(employeesProvider);
+    return ListView(
+      children: [
+        _AdminHeader(
+          title: 'Personel Yönetimi',
+          subtitle: 'Personel listesi ve hesap durumu.',
+          actions: [
+            GlowButton(
+              label: 'Personel Ekle',
+              icon: Icons.add,
+              onPressed: busy ? null : onCreate,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        employees.when(
+          loading: () => const GlowLoading(message: 'Personel yükleniyor'),
+          error: (error, _) => GlowError(
+            message: _safeAdminError(error),
+            onRetry: () => ref.invalidate(employeesProvider),
+          ),
+          data: (items) => items.isEmpty
+              ? const GlowEmptyState(title: 'Personel bulunamadı')
+              : _AdminTable(
+                  columns: const [
+                    DataColumn(label: Text('ID')),
+                    DataColumn(label: Text('Ad Soyad')),
+                    DataColumn(label: Text('Telefon')),
+                    DataColumn(label: Text('E-posta')),
+                    DataColumn(label: Text('Durum')),
+                    DataColumn(label: Text('İşlem')),
+                  ],
+                  rows: [
+                    for (final item in items)
+                      DataRow(
+                        cells: [
+                          DataCell(Text(item['employeeId']?.toString() ?? '-')),
+                          DataCell(Text(_employeeName(item))),
+                          DataCell(Text(item['phone']?.toString() ?? '-')),
+                          DataCell(Text(item['email']?.toString() ?? '-')),
+                          DataCell(Text(
+                              item['active'] == false ? 'Pasif' : 'Aktif')),
+                          DataCell(
+                            Wrap(
+                              spacing: AppSpacing.xs,
+                              children: [
+                                TextButton(
+                                  onPressed: busy ? null : () => onEdit(item),
+                                  child: const Text('Düzenle'),
+                                ),
+                                TextButton(
+                                  onPressed:
+                                      busy ? null : () => onDeactivate(item),
+                                  child: const Text('Pasifleştir'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScheduleSection extends ConsumerWidget {
+  const _ScheduleSection({
+    required this.busy,
+    required this.onCreateWorkingHour,
+    required this.onEditWorkingHour,
+    required this.onCreateHoliday,
+  });
+
+  final bool busy;
+  final VoidCallback onCreateWorkingHour;
+  final ValueChanged<Map<String, dynamic>> onEditWorkingHour;
+  final VoidCallback onCreateHoliday;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hours = ref.watch(workingHoursProvider);
+    final holidays = ref.watch(holidaysProvider(_adminHolidayQuery()));
+    return ListView(
+      children: [
+        _AdminHeader(
+          title: 'Çalışma Saatleri ve Tatiller',
+          subtitle: 'İşletme takvimi yönetimi.',
+          actions: [
+            GlowButton(
+              label: 'Saat Ekle',
+              icon: Icons.add,
+              onPressed: busy ? null : onCreateWorkingHour,
+            ),
+            GlowButton(
+              label: 'Tatil Ekle',
+              icon: Icons.beach_access_outlined,
+              variant: GlowButtonVariant.outlined,
+              onPressed: busy ? null : onCreateHoliday,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final split = constraints.maxWidth >= 860;
+            final panels = [
+              _AsyncListPanel(
+                title: 'Çalışma Saatleri',
+                state: hours,
+                itemBuilder: (item) => ListTile(
+                  title: Text(item['dayOfWeek']?.toString() ?? '-'),
+                  subtitle: Text(
+                      '${item['startTime'] ?? '-'} - ${item['endTime'] ?? '-'}'),
+                  trailing: TextButton(
+                    onPressed: busy ? null : () => onEditWorkingHour(item),
+                    child: const Text('Düzenle'),
+                  ),
+                ),
+              ),
+              _AsyncListPanel(
+                title: 'Tatil Günleri',
+                state: holidays,
+                itemBuilder: (item) => ListTile(
+                  title: Text(item['holidayName']?.toString() ?? 'Tatil'),
+                  subtitle: Text(
+                    '${item['holidayDate'] ?? '-'} ${item['description'] ?? ''}',
+                  ),
+                ),
+              ),
+            ];
+            return split
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: panels[0]),
+                      const SizedBox(width: AppSpacing.lg),
+                      Expanded(child: panels[1]),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      panels[0],
+                      const SizedBox(height: AppSpacing.lg),
+                      panels[1],
+                    ],
+                  );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _AppointmentsSection extends ConsumerWidget {
+  const _AppointmentsSection({
+    required this.selectedEmployeeId,
+    required this.selectedWeek,
+    required this.busy,
+    required this.onEmployeeChanged,
+    required this.onWeekChanged,
+    required this.onApprove,
+    required this.onComplete,
+    required this.onCancel,
+  });
+
+  final String? selectedEmployeeId;
+  final DateTime selectedWeek;
+  final bool busy;
+  final ValueChanged<String?> onEmployeeChanged;
+  final ValueChanged<DateTime> onWeekChanged;
+  final void Function(
+      EmployeeAppointmentsQuery query, Map<String, dynamic> item) onApprove;
+  final void Function(
+      EmployeeAppointmentsQuery query, Map<String, dynamic> item) onComplete;
+  final void Function(
+      EmployeeAppointmentsQuery query, Map<String, dynamic> item) onCancel;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final employees = ref.watch(employeesProvider);
+    return ListView(
+      children: [
+        _AdminHeader(
+          title: 'Randevu Yönetimi',
+          subtitle: 'Backend sözleşmesine göre personel bazlı haftalık takvim.',
+          actions: [
+            GlowButton(
+              label: 'Önceki Hafta',
+              icon: Icons.chevron_left,
+              variant: GlowButtonVariant.outlined,
+              onPressed: () =>
+                  onWeekChanged(selectedWeek.subtract(const Duration(days: 7))),
+            ),
+            GlowButton(
+              label: 'Sonraki Hafta',
+              icon: Icons.chevron_right,
+              variant: GlowButtonVariant.outlined,
+              onPressed: () =>
+                  onWeekChanged(selectedWeek.add(const Duration(days: 7))),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        employees.when(
+          loading: () => const GlowLoading(message: 'Personel yükleniyor'),
+          error: (error, _) => GlowError(message: _safeAdminError(error)),
+          data: (items) {
+            final selected = selectedEmployeeId ??
+                (items.isEmpty ? null : items.first['employeeId']?.toString());
+            if (selected == null) {
+              return const GlowEmptyState(
+                  title: 'Randevu için personel bulunamadı');
+            }
+            final week = EmployeeWeekRange.from(selectedWeek);
+            final query = EmployeeAppointmentsQuery(
+              employeeId: selected,
+              startDate: week.startText,
+              endDate: week.endText,
+            );
+            final appointments = ref.watch(employeeAppointmentsProvider(query));
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButton<String>(
+                  value: selected,
+                  items: [
+                    for (final item in items)
+                      DropdownMenuItem(
+                        value: item['employeeId']?.toString(),
+                        child: Text(_employeeName(item)),
+                      ),
+                  ],
+                  onChanged: onEmployeeChanged,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                appointments.when(
+                  loading: () =>
+                      const GlowLoading(message: 'Randevular yükleniyor'),
+                  error: (error, _) => GlowError(
+                    message: _safeAdminError(error),
+                    onRetry: () =>
+                        ref.invalidate(employeeAppointmentsProvider(query)),
+                  ),
+                  data: (items) => items.isEmpty
+                      ? const GlowEmptyState(title: 'Bu hafta randevu yok')
+                      : _AdminTable(
+                          columns: const [
+                            DataColumn(label: Text('Tarih')),
+                            DataColumn(label: Text('Saat')),
+                            DataColumn(label: Text('Hizmet')),
+                            DataColumn(label: Text('Müşteri')),
+                            DataColumn(label: Text('Durum')),
+                            DataColumn(label: Text('İşlem')),
+                          ],
+                          rows: [
+                            for (final item in items)
+                              DataRow(
+                                cells: [
+                                  DataCell(Text(
+                                      item['appointmentDate']?.toString() ??
+                                          '-')),
+                                  DataCell(Text(BookingDateUtils.normalizeTime(
+                                          item['appointmentTime']) ??
+                                      '-')),
+                                  DataCell(Text(
+                                      item['serviceName']?.toString() ?? '-')),
+                                  DataCell(Text(
+                                      '${item['customerName'] ?? ''} ${item['customerSurname'] ?? ''}'
+                                          .trim())),
+                                  DataCell(Text(employeeAppointmentStatusLabel(
+                                      item['status']))),
+                                  DataCell(
+                                    Wrap(
+                                      spacing: AppSpacing.xs,
+                                      children: [
+                                        if (item['status']
+                                                ?.toString()
+                                                .toUpperCase() ==
+                                            'PENDING')
+                                          TextButton(
+                                            onPressed: busy
+                                                ? null
+                                                : () => onApprove(query, item),
+                                            child: const Text('Onayla'),
+                                          ),
+                                        if (item['status']
+                                                ?.toString()
+                                                .toUpperCase() ==
+                                            'APPROVED')
+                                          TextButton(
+                                            onPressed: busy
+                                                ? null
+                                                : () => onComplete(query, item),
+                                            child: const Text('Tamamla'),
+                                          ),
+                                        TextButton(
+                                          onPressed: busy
+                                              ? null
+                                              : () => onCancel(query, item),
+                                          child: const Text('İptal'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _CustomersSection extends ConsumerWidget {
+  const _CustomersSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final customers = ref.watch(customersProvider);
+    return ListView(
+      children: [
+        const _AdminHeader(
+          title: 'Müşteriler',
+          subtitle: 'Backend tarafından desteklenen müşteri listesi.',
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        customers.when(
+          loading: () => const GlowLoading(message: 'Müşteriler yükleniyor'),
+          error: (error, _) => GlowError(
+            message: _safeAdminError(error),
+            onRetry: () => ref.invalidate(customersProvider),
+          ),
+          data: (items) => items.isEmpty
+              ? const GlowEmptyState(title: 'Müşteri bulunamadı')
+              : _AdminTable(
+                  columns: const [
+                    DataColumn(label: Text('ID')),
+                    DataColumn(label: Text('Ad Soyad')),
+                    DataColumn(label: Text('Telefon')),
+                    DataColumn(label: Text('E-posta')),
+                    DataColumn(label: Text('Durum')),
+                  ],
+                  rows: [
+                    for (final item in items)
+                      DataRow(
+                        cells: [
+                          DataCell(Text(item['customerId']?.toString() ?? '-')),
+                          DataCell(Text(
+                              '${item['firstName'] ?? ''} ${item['lastName'] ?? ''}'
+                                  .trim())),
+                          DataCell(Text(item['phone']?.toString() ?? '-')),
+                          DataCell(Text(item['email']?.toString() ?? '-')),
+                          DataCell(Text(
+                              item['active'] == false ? 'Pasif' : 'Aktif')),
+                        ],
+                      ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AdminHeader extends StatelessWidget {
+  const _AdminHeader({
+    required this.title,
+    required this.subtitle,
+    this.actions = const [],
+  });
+
+  final String title;
+  final String subtitle;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
-    const rows = [
-      ['09:30', 'İpek kirpik · Derya K.', 'Elif Yılmaz · 90 dk'],
-      ['11:00', 'Hydrafacial · Zeynep A.', 'Dilara Şen · 60 dk'],
-      ['14:30', 'Kalıcı oje · Melis T.', 'İrem Aydın · 45 dk'],
-    ];
-    return GlowCard(
-      padding: const EdgeInsets.all(21),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Bugünün programı',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 16),
-          for (final row in rows) ...[
-            Row(
-              children: [
-                SizedBox(
-                  width: 50,
-                  child: Text(row[0],
-                      style: Theme.of(context).textTheme.labelSmall),
-                ),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.petal,
-                      border: const Border(
-                        left: BorderSide(color: AppColors.action, width: 3),
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(row[1],
-                            style: Theme.of(context).textTheme.titleSmall),
-                        Text(row[2],
-                            style: Theme.of(context).textTheme.labelSmall),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 11),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 760;
+        final titleBlock = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const GlowEyebrow('GlowBook Admin'),
+            const SizedBox(height: AppSpacing.xs),
+            Text(title, style: Theme.of(context).textTheme.headlineMedium),
+            Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
           ],
-        ],
+        );
+        return wide
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: titleBlock),
+                  Wrap(spacing: AppSpacing.sm, children: actions),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  titleBlock,
+                  const SizedBox(height: AppSpacing.md),
+                  Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: actions),
+                ],
+              );
+      },
+    );
+  }
+}
+
+class _AdminTable extends StatelessWidget {
+  const _AdminTable({required this.columns, required this.rows});
+
+  final List<DataColumn> columns;
+  final List<DataRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlowCard(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(columns: columns, rows: rows),
       ),
     );
   }
 }
 
-class _ListPanel extends StatelessWidget {
-  const _ListPanel({
+class _AsyncStat extends StatelessWidget {
+  const _AsyncStat({
     required this.title,
-    required this.asyncValue,
-    required this.titleKey,
+    required this.state,
     required this.icon,
   });
 
   final String title;
-  final AsyncValue<List<Map<String, dynamic>>> asyncValue;
-  final String titleKey;
+  final AsyncValue<List<Map<String, dynamic>>> state;
   final IconData icon;
 
   @override
   Widget build(BuildContext context) {
+    return GlowStatCard(
+      title: title,
+      value: state.when(
+        data: (items) => items.length.toString(),
+        error: (_, __) => '!',
+        loading: () => '...',
+      ),
+      icon: icon,
+    );
+  }
+}
+
+class _AsyncListPanel extends StatelessWidget {
+  const _AsyncListPanel({
+    required this.title,
+    required this.state,
+    required this.itemBuilder,
+  });
+
+  final String title;
+  final AsyncValue<List<Map<String, dynamic>>> state;
+  final Widget Function(Map<String, dynamic> item) itemBuilder;
+
+  @override
+  Widget build(BuildContext context) {
     return GlowCard(
-      padding: const EdgeInsets.all(21),
-      child: asyncValue.when(
-        loading: () => const GlowLoading(message: 'Yükleniyor'),
-        error: (error, _) => GlowError(message: error.toString()),
-        data: (items) => Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.md),
+          state.when(
+            loading: () => const LinearProgressIndicator(),
+            error: (error, _) => Text(_safeAdminError(error)),
+            data: (items) => items.isEmpty
+                ? const Text('Kayıt bulunamadı')
+                : Column(
+                    children: [for (final item in items) itemBuilder(item)]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UnsupportedPanel extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GlowSoftNotice(
+      title: 'Backend destek kapsamı',
+      message:
+          'Gelir grafiği, kategori CRUD, tüm randevular listesi ve bildirim yönetimi için ayrı admin endpoint’i bulunmadığı için sabit veri gösterilmiyor.',
+    );
+  }
+}
+
+class _RowHeader extends StatelessWidget {
+  const _RowHeader({
+    required this.title,
+    this.subtitle,
+    required this.trailing,
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 680;
+        final text = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
-            for (final item in items.take(4)) ...[
-              Row(
-                children: [
-                  GlowMark(icon: icon, size: 34),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      item[titleKey]?.toString() ??
-                          item['employeeId']?.toString() ??
-                          '-',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                  ),
-                  const GlowPill(label: '+%12'),
-                ],
-              ),
-              const SizedBox(height: 13),
-            ],
+            if (subtitle != null && subtitle!.trim().isNotEmpty)
+              Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
           ],
-        ),
-      ),
+        );
+        return wide
+            ? Row(children: [Expanded(child: text), trailing])
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  text,
+                  const SizedBox(height: AppSpacing.sm),
+                  trailing
+                ],
+              );
+      },
     );
   }
 }
 
-class _StatFromAsync extends StatelessWidget {
-  const _StatFromAsync({
-    required this.value,
-    required this.title,
-    required this.icon,
-  });
+class _ServiceFormDialog extends StatefulWidget {
+  const _ServiceFormDialog({this.item});
 
-  final AsyncValue<List<Map<String, dynamic>>> value;
-  final String title;
-  final IconData icon;
+  final Map<String, dynamic>? item;
+
+  @override
+  State<_ServiceFormDialog> createState() => _ServiceFormDialogState();
+}
+
+class _ServiceFormDialogState extends State<_ServiceFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final _name =
+      TextEditingController(text: widget.item?['serviceName']?.toString());
+  late final _description =
+      TextEditingController(text: widget.item?['description']?.toString());
+  late final _image =
+      TextEditingController(text: widget.item?['serviceImage']?.toString());
+  late bool _active = widget.item?['active'] != false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _description.dispose();
+    _image.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return value.when(
-      loading: () => GlowStatCard(title: title, value: '...', icon: icon),
-      error: (error, _) =>
-          GlowStatCard(title: title, value: '!', icon: Icons.error_outline),
-      data: (items) => GlowStatCard(
-          title: title, value: items.length.toString(), icon: icon),
+    return _AdminFormDialog(
+      title: widget.item == null ? 'Hizmet Ekle' : 'Hizmeti Düzenle',
+      formKey: _formKey,
+      fields: [
+        TextFormField(
+          controller: _name,
+          decoration: const InputDecoration(labelText: 'Hizmet adı'),
+          validator: _required,
+        ),
+        TextFormField(
+          controller: _description,
+          decoration: const InputDecoration(labelText: 'Açıklama'),
+          minLines: 2,
+          maxLines: 3,
+        ),
+        TextFormField(
+          controller: _image,
+          decoration: const InputDecoration(labelText: 'Görsel URL'),
+        ),
+        SwitchListTile(
+          value: _active,
+          onChanged: (value) => setState(() => _active = value),
+          title: const Text('Aktif'),
+        ),
+      ],
+      onSubmit: () => {
+        'serviceName': _name.text.trim(),
+        'description': _description.text.trim(),
+        'serviceImage': _image.text.trim(),
+        'active': _active,
+      },
     );
   }
+}
+
+class _OptionFormDialog extends StatefulWidget {
+  const _OptionFormDialog({this.item});
+
+  final Map<String, dynamic>? item;
+
+  @override
+  State<_OptionFormDialog> createState() => _OptionFormDialogState();
+}
+
+class _OptionFormDialogState extends State<_OptionFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final _name =
+      TextEditingController(text: widget.item?['optionName']?.toString());
+  late final _price =
+      TextEditingController(text: widget.item?['price']?.toString());
+  late bool _active = widget.item?['active'] != false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _price.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _AdminFormDialog(
+      title: widget.item == null
+          ? 'Fiyat Seçeneği Ekle'
+          : 'Fiyat Seçeneğini Düzenle',
+      formKey: _formKey,
+      fields: [
+        TextFormField(
+          controller: _name,
+          decoration: const InputDecoration(labelText: 'Seçenek adı'),
+          validator: _required,
+        ),
+        TextFormField(
+          controller: _price,
+          decoration: const InputDecoration(labelText: 'Fiyat'),
+          keyboardType: TextInputType.number,
+          validator: _positiveNumber,
+        ),
+        SwitchListTile(
+          value: _active,
+          onChanged: (value) => setState(() => _active = value),
+          title: const Text('Aktif'),
+        ),
+      ],
+      onSubmit: () => {
+        'optionName': _name.text.trim(),
+        'price': double.tryParse(_price.text.trim().replaceAll(',', '.')),
+        'active': _active,
+      },
+    );
+  }
+}
+
+class _PackageFormDialog extends StatefulWidget {
+  const _PackageFormDialog({this.item});
+
+  final Map<String, dynamic>? item;
+
+  @override
+  State<_PackageFormDialog> createState() => _PackageFormDialogState();
+}
+
+class _PackageFormDialogState extends State<_PackageFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final _name =
+      TextEditingController(text: widget.item?['packageName']?.toString());
+  late final _description =
+      TextEditingController(text: widget.item?['description']?.toString());
+  late final _sessions =
+      TextEditingController(text: widget.item?['totalSession']?.toString());
+  late final _price =
+      TextEditingController(text: widget.item?['price']?.toString());
+  late final _image =
+      TextEditingController(text: widget.item?['packageImage']?.toString());
+  late bool _active = widget.item?['active'] != false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _description.dispose();
+    _sessions.dispose();
+    _price.dispose();
+    _image.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _AdminFormDialog(
+      title: widget.item == null ? 'Paket Ekle' : 'Paketi Düzenle',
+      formKey: _formKey,
+      fields: [
+        TextFormField(
+            controller: _name,
+            decoration: const InputDecoration(labelText: 'Paket adı'),
+            validator: _required),
+        TextFormField(
+            controller: _description,
+            decoration: const InputDecoration(labelText: 'Açıklama')),
+        TextFormField(
+            controller: _sessions,
+            decoration: const InputDecoration(labelText: 'Seans sayısı'),
+            keyboardType: TextInputType.number,
+            validator: _positiveInt),
+        TextFormField(
+            controller: _price,
+            decoration: const InputDecoration(labelText: 'Fiyat'),
+            keyboardType: TextInputType.number,
+            validator: _positiveNumber),
+        TextFormField(
+            controller: _image,
+            decoration: const InputDecoration(labelText: 'Görsel URL')),
+        SwitchListTile(
+            value: _active,
+            onChanged: (value) => setState(() => _active = value),
+            title: const Text('Aktif')),
+      ],
+      onSubmit: () => {
+        'packageName': _name.text.trim(),
+        'description': _description.text.trim(),
+        'totalSession': int.tryParse(_sessions.text.trim()),
+        'price': double.tryParse(_price.text.trim().replaceAll(',', '.')),
+        'packageImage': _image.text.trim(),
+        'active': _active,
+      },
+    );
+  }
+}
+
+class _EmployeeFormDialog extends StatefulWidget {
+  const _EmployeeFormDialog({this.item});
+
+  final Map<String, dynamic>? item;
+
+  @override
+  State<_EmployeeFormDialog> createState() => _EmployeeFormDialogState();
+}
+
+class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final _employeeId =
+      TextEditingController(text: widget.item?['employeeId']?.toString());
+  late final _firstName =
+      TextEditingController(text: widget.item?['firstName']?.toString());
+  late final _lastName =
+      TextEditingController(text: widget.item?['lastName']?.toString());
+  late final _phone =
+      TextEditingController(text: widget.item?['phone']?.toString());
+  late final _email =
+      TextEditingController(text: widget.item?['email']?.toString());
+  final _password = TextEditingController();
+  late bool _active = widget.item?['active'] != false;
+
+  @override
+  void dispose() {
+    _employeeId.dispose();
+    _firstName.dispose();
+    _lastName.dispose();
+    _phone.dispose();
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final editing = widget.item != null;
+    return _AdminFormDialog(
+      title: editing ? 'Personeli Düzenle' : 'Personel Ekle',
+      formKey: _formKey,
+      fields: [
+        TextFormField(
+            controller: _employeeId,
+            enabled: !editing,
+            decoration: const InputDecoration(labelText: 'Personel ID'),
+            validator: _required),
+        TextFormField(
+            controller: _firstName,
+            decoration: const InputDecoration(labelText: 'Ad'),
+            validator: _required),
+        TextFormField(
+            controller: _lastName,
+            decoration: const InputDecoration(labelText: 'Soyad'),
+            validator: _required),
+        TextFormField(
+            controller: _phone,
+            decoration: const InputDecoration(labelText: 'Telefon')),
+        TextFormField(
+            controller: _email,
+            decoration: const InputDecoration(labelText: 'E-posta')),
+        TextFormField(
+            controller: _password,
+            decoration: InputDecoration(
+                labelText: editing ? 'Şifre (backend için zorunlu)' : 'Şifre'),
+            obscureText: true,
+            validator: _required),
+        SwitchListTile(
+            value: _active,
+            onChanged: (value) => setState(() => _active = value),
+            title: const Text('Aktif')),
+      ],
+      onSubmit: () => {
+        'employeeId': _employeeId.text.trim(),
+        'firstName': _firstName.text.trim(),
+        'lastName': _lastName.text.trim(),
+        'phone': _phone.text.trim(),
+        'email': _email.text.trim(),
+        'password': _password.text.trim(),
+        'active': _active,
+      },
+    );
+  }
+}
+
+class _WorkingHourFormDialog extends StatefulWidget {
+  const _WorkingHourFormDialog({this.item});
+
+  final Map<String, dynamic>? item;
+
+  @override
+  State<_WorkingHourFormDialog> createState() => _WorkingHourFormDialogState();
+}
+
+class _WorkingHourFormDialogState extends State<_WorkingHourFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late String _day = widget.item?['dayOfWeek']?.toString() ?? 'MONDAY';
+  late final _start = TextEditingController(
+      text:
+          BookingDateUtils.normalizeTime(widget.item?['startTime']) ?? '09:00');
+  late final _end = TextEditingController(
+      text: BookingDateUtils.normalizeTime(widget.item?['endTime']) ?? '18:00');
+  late bool _closed = widget.item?['closed'] == true;
+
+  @override
+  void dispose() {
+    _start.dispose();
+    _end.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _AdminFormDialog(
+      title: widget.item == null
+          ? 'Çalışma Saati Ekle'
+          : 'Çalışma Saatini Düzenle',
+      formKey: _formKey,
+      fields: [
+        DropdownButtonFormField<String>(
+          initialValue: _day,
+          decoration: const InputDecoration(labelText: 'Gün'),
+          items: const [
+            'MONDAY',
+            'TUESDAY',
+            'WEDNESDAY',
+            'THURSDAY',
+            'FRIDAY',
+            'SATURDAY',
+            'SUNDAY',
+          ]
+              .map((day) => DropdownMenuItem(value: day, child: Text(day)))
+              .toList(),
+          onChanged: (value) => setState(() => _day = value ?? _day),
+        ),
+        TextFormField(
+            controller: _start,
+            decoration: const InputDecoration(labelText: 'Başlangıç'),
+            validator: _required),
+        TextFormField(
+            controller: _end,
+            decoration: const InputDecoration(labelText: 'Bitiş'),
+            validator: _required),
+        SwitchListTile(
+            value: _closed,
+            onChanged: (value) => setState(() => _closed = value),
+            title: const Text('Kapalı')),
+      ],
+      onSubmit: () => {
+        'dayOfWeek': _day,
+        'startTime': _start.text.trim(),
+        'endTime': _end.text.trim(),
+        'closed': _closed,
+      },
+    );
+  }
+}
+
+class _HolidayFormDialog extends StatefulWidget {
+  const _HolidayFormDialog();
+
+  @override
+  State<_HolidayFormDialog> createState() => _HolidayFormDialogState();
+}
+
+class _HolidayFormDialogState extends State<_HolidayFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _date = TextEditingController(
+      text: BookingDateUtils.formatDate(BookingDateUtils.today()));
+  final _name = TextEditingController();
+  final _description = TextEditingController();
+
+  @override
+  void dispose() {
+    _date.dispose();
+    _name.dispose();
+    _description.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _AdminFormDialog(
+      title: 'Tatil Günü Ekle',
+      formKey: _formKey,
+      fields: [
+        TextFormField(
+            controller: _date,
+            decoration: const InputDecoration(labelText: 'Tarih'),
+            validator: _required),
+        TextFormField(
+            controller: _name,
+            decoration: const InputDecoration(labelText: 'Tatil adı'),
+            validator: _required),
+        TextFormField(
+            controller: _description,
+            decoration: const InputDecoration(labelText: 'Açıklama')),
+      ],
+      onSubmit: () => {
+        'holidayDate': _date.text.trim(),
+        'holidayName': _name.text.trim(),
+        'description': _description.text.trim(),
+      },
+    );
+  }
+}
+
+class _AdminFormDialog extends StatelessWidget {
+  const _AdminFormDialog({
+    required this.title,
+    required this.formKey,
+    required this.fields,
+    required this.onSubmit,
+  });
+
+  final String title;
+  final GlobalKey<FormState> formKey;
+  final List<Widget> fields;
+  final Map<String, dynamic> Function() onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(title),
+      content: SizedBox(
+        width: 520,
+        child: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final field in fields) ...[
+                  field,
+                  const SizedBox(height: AppSpacing.sm),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        GlowButton(
+          label: 'Vazgeç',
+          variant: GlowButtonVariant.text,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        GlowButton(
+          label: 'Kaydet',
+          icon: Icons.save_outlined,
+          onPressed: () {
+            if (formKey.currentState?.validate() != true) return;
+            Navigator.of(context).pop(onSubmit());
+          },
+        ),
+      ],
+    );
+  }
+}
+
+DateRangeQuery _adminHolidayQuery() {
+  final today = BookingDateUtils.today();
+  return DateRangeQuery(
+    startDate: BookingDateUtils.formatDate(today),
+    endDate: BookingDateUtils.formatDate(today.add(const Duration(days: 180))),
+  );
+}
+
+String _safeAdminError(Object error) {
+  final text = error.toString().replaceFirst('Exception:', '').trim();
+  if (text.contains('401') || text.toLowerCase().contains('unauthorized')) {
+    return 'Oturum süren dolmuş olabilir. Lütfen tekrar giriş yap.';
+  }
+  if (text.contains('403') || text.toLowerCase().contains('forbidden')) {
+    return 'Bu işlem için admin yetkisi gerekiyor.';
+  }
+  if (text.toLowerCase().contains('conflict')) {
+    return 'Bu kayıt başka bir veriyle çakışıyor. Bilgileri kontrol et.';
+  }
+  if (text.toLowerCase().contains('validation') || text.contains('400')) {
+    return 'Form bilgilerini kontrol edip tekrar dene.';
+  }
+  return text.isEmpty ? 'İşlem tamamlanamadı. Lütfen tekrar dene.' : text;
+}
+
+String? _required(String? value) {
+  return value == null || value.trim().isEmpty ? 'Bu alan zorunludur.' : null;
+}
+
+String? _positiveNumber(String? value) {
+  final parsed = double.tryParse(value?.trim().replaceAll(',', '.') ?? '');
+  return parsed == null || parsed <= 0 ? 'Pozitif bir değer gir.' : null;
+}
+
+String? _positiveInt(String? value) {
+  final parsed = int.tryParse(value?.trim() ?? '');
+  return parsed == null || parsed <= 0 ? 'Pozitif bir sayı gir.' : null;
+}
+
+String _employeeName(Map<String, dynamic> item) {
+  final fullName = item['fullName']?.toString();
+  if (fullName != null && fullName.trim().isNotEmpty) return fullName;
+  final text = '${item['firstName'] ?? ''} ${item['lastName'] ?? ''}'.trim();
+  return text.isEmpty ? item['employeeId']?.toString() ?? 'Personel' : text;
+}
+
+int? _intValue(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
 }

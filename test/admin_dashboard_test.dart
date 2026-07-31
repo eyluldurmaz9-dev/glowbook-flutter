@@ -1,0 +1,324 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:glowbook_flutter/core/api/api_client.dart';
+import 'package:glowbook_flutter/core/services/api_service.dart';
+import 'package:glowbook_flutter/core/services/glow_backend_service.dart';
+import 'package:glowbook_flutter/core/storage/secure_storage_service.dart';
+import 'package:glowbook_flutter/core/theme/app_theme.dart';
+import 'package:glowbook_flutter/features/dashboard/admin_dashboard_page.dart';
+import 'package:glowbook_flutter/providers/app_providers.dart';
+
+void main() {
+  testWidgets('Admin route guard müşteri erişimini engeller', (tester) async {
+    await _pumpAdmin(
+      tester,
+      backend: _FakeAdminBackend(),
+      session:
+          const AuthSession(token: 'token', role: 'CUSTOMER', customerId: 1),
+    );
+
+    expect(find.text('Admin yetkisi gerekli'), findsOneWidget);
+  });
+
+  testWidgets('Responsive admin layout geniş ekranda sidebar gösterir',
+      (tester) async {
+    _setWideViewport(tester);
+    await _pumpAdmin(tester, backend: _FakeAdminBackend());
+
+    expect(find.text('Genel Bakış'), findsWidgets);
+    expect(find.text('Hizmetler'), findsWidgets);
+    expect(find.text('Paketler'), findsWidgets);
+
+    addTearDown(() => _resetViewport(tester));
+  });
+
+  testWidgets('Hizmet CRUD oluşturma ve silme onay akışı çalışır',
+      (tester) async {
+    _setWideViewport(tester);
+    final backend = _FakeAdminBackend();
+    await _pumpAdmin(tester, backend: backend);
+
+    await tester.tap(find.byKey(const Key('admin_nav_services')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('admin_service_create_form')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Hizmet adı'),
+      'Cilt Bakımı',
+    );
+    await _tapText(tester, 'Kaydet');
+    await tester.pumpAndSettle();
+
+    expect(backend.createServiceCount, 1);
+    expect(find.text('Hizmet kaydedildi'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('admin_service_delete')));
+    await tester.pumpAndSettle();
+    expect(find.text('Hizmeti pasifleştir'), findsOneWidget);
+    await _tapText(tester, 'Onayla', last: true);
+    await tester.pumpAndSettle();
+
+    expect(backend.deactivateServiceCount, 1);
+    addTearDown(() => _resetViewport(tester));
+  });
+
+  testWidgets('Paket CRUD güncelleme backend çağrısı yapar', (tester) async {
+    _setWideViewport(tester);
+    final backend = _FakeAdminBackend();
+    await _pumpAdmin(tester, backend: backend);
+
+    await tester.tap(find.byKey(const Key('admin_nav_packages')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('admin_package_edit')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Paket adı'),
+      'Premium Paket',
+    );
+    await _tapText(tester, 'Kaydet');
+    await tester.pumpAndSettle();
+
+    expect(backend.updatePackageCount, 1);
+    addTearDown(() => _resetViewport(tester));
+  });
+
+  testWidgets('Personel listeleme gerçek provider verisini gösterir',
+      (tester) async {
+    _setWideViewport(tester);
+    await _pumpAdmin(tester, backend: _FakeAdminBackend());
+
+    await tester.tap(find.byKey(const Key('admin_nav_employees')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('EMP-1'), findsOneWidget);
+    expect(find.text('Elif Yılmaz'), findsOneWidget);
+    addTearDown(() => _resetViewport(tester));
+  });
+
+  testWidgets('API validation ve conflict hataları güvenli gösterilir',
+      (tester) async {
+    _setWideViewport(tester);
+    final backend =
+        _FakeAdminBackend(createServiceError: Exception('409 conflict'));
+    await _pumpAdmin(tester, backend: backend);
+
+    await tester.tap(find.byKey(const Key('admin_nav_services')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('admin_service_create_form')));
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Kaydet');
+    await tester.pump();
+    expect(find.text('Bu alan zorunludur.'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Hizmet adı'),
+      'Çakışan Hizmet',
+    );
+    await _tapText(tester, 'Kaydet');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Bu kayıt başka bir veriyle çakışıyor. Bilgileri kontrol et.'),
+      findsOneWidget,
+    );
+    addTearDown(() => _resetViewport(tester));
+  });
+}
+
+Future<void> _pumpAdmin(
+  WidgetTester tester, {
+  required _FakeAdminBackend backend,
+  AuthSession session = const AuthSession(
+    token: 'token',
+    role: 'ADMIN',
+    employeeId: 'ADMIN-1',
+    fullName: 'Admin',
+  ),
+}) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        glowBackendServiceProvider.overrideWithValue(backend),
+        authControllerProvider.overrideWith(
+          (ref) => _ReadyAuthController(backend, session),
+        ),
+        servicesProvider.overrideWith((ref) async => backend.services),
+        serviceOptionsProvider.overrideWith(
+          (ref, serviceId) async => backend.options,
+        ),
+        allServicePackagesProvider
+            .overrideWith((ref) async => backend.packages),
+        employeesProvider.overrideWith((ref) async => backend.employees),
+        customersProvider.overrideWith((ref) async => backend.customers),
+        workingHoursProvider.overrideWith((ref) async => backend.workingHours),
+        holidaysProvider.overrideWith((ref, query) async => backend.holidays),
+      ],
+      child: MaterialApp(
+          theme: AppTheme.lightTheme, home: const AdminDashboardPage()),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+void _setWideViewport(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(1280, 900);
+}
+
+void _resetViewport(WidgetTester tester) {
+  tester.view.resetPhysicalSize();
+  tester.view.resetDevicePixelRatio();
+}
+
+Future<void> _tapText(
+  WidgetTester tester,
+  String text, {
+  bool last = false,
+}) async {
+  final matches = find.text(text);
+  if (matches.evaluate().isEmpty) {
+    final texts = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((widget) => widget.data)
+        .whereType<String>()
+        .join(' | ');
+    fail('Metin bulunamadı: $text. Ekrandaki metinler: $texts');
+  }
+  final candidates =
+      last ? matches.evaluate().toList().reversed : matches.evaluate().toList();
+  for (final candidate in candidates) {
+    final textFinder = find.byWidget(candidate.widget);
+    final controls = [
+      find.ancestor(of: textFinder, matching: find.byType(TextButton)),
+      find.ancestor(of: textFinder, matching: find.byType(ElevatedButton)),
+      find.ancestor(of: textFinder, matching: find.byType(OutlinedButton)),
+      find.ancestor(of: textFinder, matching: find.byType(PopupMenuItem)),
+    ];
+    for (final control in controls) {
+      if (control.evaluate().isNotEmpty) {
+        await tester.ensureVisible(control.first);
+        await tester.tap(control.first, warnIfMissed: false);
+        return;
+      }
+    }
+  }
+  final finder = last ? matches.last : matches.first;
+  await tester.ensureVisible(finder);
+  await tester.tap(finder, warnIfMissed: false);
+}
+
+class _FakeAdminBackend extends GlowBackendService {
+  _FakeAdminBackend({this.createServiceError})
+      : super(
+          ApiService(GlowApiClient(secureStorage: SecureStorageService())),
+          SecureStorageService(),
+        );
+
+  final Object? createServiceError;
+  int createServiceCount = 0;
+  int deactivateServiceCount = 0;
+  int updatePackageCount = 0;
+
+  final services = const [
+    {
+      'serviceId': 1,
+      'serviceName': 'Hydrafacial',
+      'description': 'Cilt bakımı',
+      'active': true,
+    },
+  ];
+
+  final options = const [
+    {
+      'optionId': 11,
+      'serviceId': 1,
+      'optionName': 'Standart',
+      'price': 900.0,
+      'active': true,
+    },
+  ];
+
+  final packages = const [
+    {
+      'packageId': 5,
+      'serviceId': 1,
+      'serviceName': 'Hydrafacial',
+      'packageName': '6 Seans',
+      'description': 'Paket',
+      'totalSession': 6,
+      'price': 4800.0,
+      'active': true,
+    },
+  ];
+
+  final employees = const [
+    {
+      'employeeId': 'EMP-1',
+      'firstName': 'Elif',
+      'lastName': 'Yılmaz',
+      'phone': '5551112233',
+      'email': 'elif@example.com',
+      'active': true,
+    },
+  ];
+
+  final customers = const [
+    {
+      'customerId': 1,
+      'firstName': 'Derya',
+      'lastName': 'Yılmaz',
+      'phone': '5550001122',
+      'email': 'derya@example.com',
+      'active': true,
+    },
+  ];
+
+  final workingHours = const [
+    {
+      'workingHourId': 1,
+      'dayOfWeek': 'MONDAY',
+      'startTime': '09:00:00',
+      'endTime': '18:00:00',
+      'closed': false,
+    },
+  ];
+
+  final holidays = const [
+    {
+      'holidayId': 1,
+      'holidayDate': '2026-08-30',
+      'holidayName': 'Zafer Bayramı',
+      'description': 'Resmi tatil',
+    },
+  ];
+
+  @override
+  Future<Map<String, dynamic>> createService(
+      Map<String, dynamic> payload) async {
+    createServiceCount++;
+    if (createServiceError != null) throw createServiceError!;
+    return {'serviceId': 2, ...payload};
+  }
+
+  @override
+  Future<Map<String, dynamic>> deactivateService(int serviceId) async {
+    deactivateServiceCount++;
+    return services.first;
+  }
+
+  @override
+  Future<Map<String, dynamic>> updatePackage(
+    int packageId,
+    Map<String, dynamic> payload,
+  ) async {
+    updatePackageCount++;
+    return {'packageId': packageId, ...payload};
+  }
+}
+
+class _ReadyAuthController extends AuthController {
+  _ReadyAuthController(super.backend, AuthSession session) {
+    state = AsyncValue.data(session);
+  }
+}
