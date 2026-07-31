@@ -1,59 +1,65 @@
-# GlowBook Flutter Frontend
+# GlowBook Flutter
 
-Bu repository, GlowBook servis yönetimi uygulaması için Flutter frontend iskeletini içerir. Flutter uygulaması aşağıdaki temel özelliklerle hazırlanmıştır:
+GlowBook Flutter uygulamasi Android, iOS ve Flutter Web hedefleri icin hazirlanmis frontend uygulamasidir. Uygulama Spring Boot backend ile Dio, secure storage ve Riverpod tabanli state management uzerinden konusur.
 
-- Riverpod tabanlı durum yönetimi
-- GoRouter ile yönlendirme
-- Dio ile API istemcisi ve JWT kimlik doğrulama desteği
-- Flutter Secure Storage ile token saklama
-- Pembe-beyaz bir tema ve temel yeniden kullanılabilir bileşenler
-- Splash, Onboarding, Login, Register, Home, Services, Packages, Appointments, Notifications, Profile ve Settings sayfaları
+## Gereksinimler
 
-## Proje yapısı
+- Flutter stable SDK
+- Dart SDK, Flutter ile birlikte gelir
+- Android Studio ve Android SDK
+- iOS build icin macOS ve Xcode
 
-- `lib/main.dart`: Uygulama giriş noktası
-- `lib/src/app.dart`: `MaterialApp.router` ve provider yapılandırması
-- `lib/src/providers.dart`: uygulama genelindeki servis ve router sağlayıcıları
-- `lib/src/routes/app_router.dart`: GoRouter rota tanımları
-- `lib/src/services/`: API, token saklama ve kimlik doğrulama servisleri
-- `lib/src/state/`: auth state yönetimi
-- `lib/src/theme/`: uygulama teması
-- `lib/src/widgets/`: yeniden kullanılabilir UI bileşenleri
-- `lib/src/pages/`: ekran iskeletleri
+Windows uzerinde Flutter plugin symlinkleri icin Developer Mode acik olmalidir. Projeyi OneDrive disinda bir klasorde calistirmak release build icin daha guvenilirdir.
 
-## Geliştirme ortamı
+## Ortam Ayarlari
 
-1. Flutter SDK kurulu olmalı
-2. `flutter_app` klasörüne git:
+Gercek secret veya production URL commit edilmez. Lokal degerler icin `.env.example` dosyasini referans alin ve degerleri shell, CI secret veya Vercel environment variables icinde tutun.
+
+Development:
 
 ```powershell
-cd "c:\Users\Lenovo\OneDrive\Desktop\proje\flutter_app"
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
 ```
 
-3. Paketleri yükle:
+Staging:
+
+```powershell
+flutter run --dart-define=API_BASE_URL=https://staging-api.example.com
+```
+
+Production web build:
+
+```powershell
+flutter build web --release --dart-define=API_BASE_URL=https://api.example.com --base-href=/
+```
+
+## Kalite Kontrolleri
 
 ```powershell
 flutter pub get
+dart format --set-exit-if-changed .
+flutter analyze
+flutter test
+flutter build web --release --dart-define=API_BASE_URL=https://api.example.com --base-href=/
 ```
 
-4. Uygulamayı çalıştır:
+Android release build:
 
 ```powershell
-flutter run
+flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com
+flutter build appbundle --release --dart-define=API_BASE_URL=https://api.example.com
 ```
 
-## GitHub ve yapı
+## Deployment
 
-Bu proje `main` dalında tutulmaktadır ve Flutter uygulaması `flutter_app` klasöründe bağımsız bir repository olarak yapılandırılmıştır.
+- Vercel web deployment: `vercel.json`
+- Flutter deployment rehberi: `docs/DEPLOYMENT_FLUTTER.md`
+- Android release rehberi: `docs/ANDROID_RELEASE.md`
+- iOS release rehberi: `docs/IOS_RELEASE.md`
 
-## Notlar
+## Guvenlik
 
-- Mevcut kod temel bir iskelet sağlar; gerçek backend URL ve kimlik doğrulama yanıtları backend servisleriyle uyumlu olmalıdır.
-- `lib/src/services/auth_service.dart` ve `lib/src/services/api_client.dart` dosyaları JWT token yönetimi için hazırlandı.
-- Mülakatlarda tercih edilen formatta proje dosya yapısı ve README temiz tutuldu.
-
-## İleri adımlar
-
-- Backend API endpoint’leri ile test et
-- Tasarımı Figma’dan aldığın görsel stile göre geliştir
-- Android / iOS native yapılandırmaları tamamla
+- Token, JWT, SMS credential, database password ve production URL commit etmeyin.
+- `.env` dosyalari `.gitignore` icindedir.
+- Production backend URL degeri `--dart-define=API_BASE_URL=...` ile verilmelidir.
+- Debug loglarda token veya kullanici verisi yazdirilmamalidir.

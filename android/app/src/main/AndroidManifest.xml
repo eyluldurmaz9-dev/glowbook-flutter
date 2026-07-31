@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
-        android:label="glowbook_flutter"
+        android:label="GlowBook"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

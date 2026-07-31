@@ -1,4 +1,4 @@
-package com.example.glowbook_flutter
+package com.glowbook.app
 
 import io.flutter.embedding.android.FlutterActivity
 
