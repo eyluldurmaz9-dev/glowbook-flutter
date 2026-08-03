@@ -1,5 +1,6 @@
 {
-  "buildCommand": "flutter pub get && flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL --base-href=/",
+  "installCommand": "npm install",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "build/web",
   "rewrites": [
     {

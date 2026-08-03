@@ -122,11 +122,28 @@ SPA route rewrite ayarlari `vercel.json` icindedir.
 
 ## Vercel Deployment
 
-Vercel'de proje root'u `flutter_app` olacak sekilde ayarlanir.
+Vercel'de proje root'u `flutter_app` olacak sekilde ayarlanir. Repository Vercel'e baglandiginda `package.json` Vercel tarafindan algilanir ve `vercel.json` icindeki build komutu calisir.
 
-- Build command: `flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL --base-href=/`
+- Install command: `npm install`
+- Build command: `npm run vercel-build`
 - Output directory: `build/web`
-- Environment variable: `API_BASE_URL`
+- Required environment variable: `API_BASE_URL`
+
+`scripts/vercel-build.sh`, Vercel build ortaminda `flutter` komutu yoksa Flutter stable SDK'yi otomatik olarak `$HOME/flutter` altina kurar, web destegini acar, paketleri indirir ve production build uretir:
+
+```bash
+flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL --base-href=/
+```
+
+Vercel environment variable ornegi:
+
+```text
+API_BASE_URL=https://api.your-production-domain.com
+```
+
+Preview veya staging deployment icin Vercel'de ayni anahtari ilgili environment'a farkli degerle tanimlayabilirsiniz. `API_BASE_URL` bos ise production build bilincli olarak durdurulur.
+
+SPA routing icin tum route'lar `index.html` dosyasina rewrite edilir; bu sayede `/login`, `/services` veya panel route'lari refresh edildiginde 404 alinmaz. Static assetler Flutter'in `build/web` cikti dizini ve root `--base-href=/` ayari ile servis edilir.
 
 Detaylar: `docs/DEPLOYMENT_FLUTTER.md`
 
