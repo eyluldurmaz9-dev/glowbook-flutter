@@ -5,7 +5,7 @@
   "description": "Vercel deployment wrapper for the GlowBook Flutter Web app.",
   "scripts": {
     "vercel-build": "bash scripts/vercel-build.sh",
-    "build:web": "flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL --base-href=/"
+    "build:web": "flutter build web --release --pwa-strategy=none --dart-define=API_BASE_URL=$API_BASE_URL --base-href=/"
   },
   "engines": {
     "node": ">=20"

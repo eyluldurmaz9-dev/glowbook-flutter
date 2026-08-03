@@ -21,4 +21,4 @@ fi
 flutter --version
 flutter config --enable-web
 flutter pub get
-flutter build web --release --dart-define=API_BASE_URL="${API_BASE_URL}" --base-href=/
+flutter build web --release --pwa-strategy=none --dart-define=API_BASE_URL="${API_BASE_URL}" --base-href=/
