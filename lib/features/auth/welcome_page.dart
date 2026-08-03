@@ -87,31 +87,7 @@ class WelcomePage extends StatelessWidget {
                   ),
                 ),
                 if (wide) const SizedBox(width: 56),
-                Expanded(
-                  child: Container(
-                    height: wide ? 530 : 320,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.blush, AppColors.petal],
-                      ),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(34),
-                        topRight: Radius.circular(34),
-                        bottomRight: Radius.circular(100),
-                        bottomLeft: Radius.circular(34),
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppColors.shadow,
-                          blurRadius: 60,
-                          offset: Offset(0, 20),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.spa_outlined,
-                        color: AppColors.action, size: 96),
-                  ),
-                ),
+                Expanded(child: _WelcomeHeroVisual(height: wide ? 530 : 320)),
               ];
               return SingleChildScrollView(
                 child: ConstrainedBox(
@@ -123,6 +99,130 @@ class WelcomePage extends StatelessWidget {
               );
             },
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WelcomeHeroVisual extends StatelessWidget {
+  const _WelcomeHeroVisual({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      image: true,
+      label: 'GlowBook premium guzellik deneyimi',
+      child: SizedBox(
+        height: height,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.shadow,
+                blurRadius: 60,
+                offset: Offset(0, 20),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(34),
+              topRight: Radius.circular(34),
+              bottomRight: Radius.circular(100),
+              bottomLeft: Radius.circular(34),
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  'assets/images/glowbook-hero.jpg',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppColors.blush, AppColors.petal],
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.spa_outlined,
+                        color: AppColors.action,
+                        size: 96,
+                      ),
+                    );
+                  },
+                ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0x00FFFFFF),
+                        Color(0x66FFF8FB),
+                        Color(0xCCFFF8FB),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 24,
+                  right: 24,
+                  bottom: 24,
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: const [
+                      _HeroPill(icon: Icons.spa_outlined, label: 'Cilt bakimi'),
+                      _HeroPill(
+                        icon: Icons.calendar_today_outlined,
+                        label: 'Aninda randevu',
+                      ),
+                      _HeroPill(icon: Icons.star_outline, label: '4.9 deneyim'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.white.withOpacity(.92),
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: AppColors.action, size: 16),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: AppColors.primaryText,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ],
         ),
       ),
     );
