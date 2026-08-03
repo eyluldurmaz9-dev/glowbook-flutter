@@ -123,6 +123,18 @@ const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
   ],
 };
 
+const _fallbackEmployees = <Map<String, dynamic>>[
+  {
+    'employeeId': 'GLW-001',
+    'firstName': 'GlowBook',
+    'lastName': 'Uzmani',
+    'fullName': 'GlowBook Uzmani',
+    'employeeName': 'GlowBook Uzmani',
+    'phone': 'Uygun personel',
+    'active': true,
+  },
+];
+
 Future<List<Map<String, dynamic>>> _withCatalogFallback(
   Future<List<Map<String, dynamic>>> Function() request,
   List<Map<String, dynamic>> fallback,
@@ -133,6 +145,28 @@ Future<List<Map<String, dynamic>>> _withCatalogFallback(
   } catch (_) {
     return fallback;
   }
+}
+
+Future<List<Map<String, dynamic>>> _withListFallback(
+  Future<List<Map<String, dynamic>>> Function() request, [
+  List<Map<String, dynamic>> fallback = const [],
+]) async {
+  try {
+    return await request();
+  } catch (_) {
+    return fallback;
+  }
+}
+
+List<Map<String, dynamic>> _fallbackSlotsFor(String date) {
+  return [
+    {
+      'employeeId': 'GLW-001',
+      'employeeName': 'GlowBook Uzmani',
+      'appointmentDate': date,
+      'availableTimes': const ['10:00', '11:00', '14:00', '15:00', '16:00'],
+    },
+  ];
 }
 
 final servicesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
@@ -181,61 +215,82 @@ final profileProvider =
 
 final customerPackagesProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, customerId) {
-  return ref.watch(glowBackendServiceProvider).getCustomerPackages(customerId);
+  return _withListFallback(
+    () => ref.watch(glowBackendServiceProvider).getCustomerPackages(customerId),
+  );
 });
 
 final customerUpcomingAppointmentsProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, customerId) {
-  return ref
-      .watch(glowBackendServiceProvider)
-      .getCustomerUpcomingAppointments(customerId);
+  return _withListFallback(
+    () => ref
+        .watch(glowBackendServiceProvider)
+        .getCustomerUpcomingAppointments(customerId),
+  );
 });
 
 final customerPastAppointmentsProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, customerId) {
-  return ref
-      .watch(glowBackendServiceProvider)
-      .getCustomerPastAppointments(customerId);
+  return _withListFallback(
+    () => ref
+        .watch(glowBackendServiceProvider)
+        .getCustomerPastAppointments(customerId),
+  );
 });
 
 final notificationsProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, customerId) {
-  return ref.watch(glowBackendServiceProvider).getNotifications(customerId);
+  return _withListFallback(
+    () => ref.watch(glowBackendServiceProvider).getNotifications(customerId),
+  );
 });
 
 final unreadNotificationsProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, customerId) {
-  return ref
-      .watch(glowBackendServiceProvider)
-      .getUnreadNotifications(customerId);
+  return _withListFallback(
+    () => ref
+        .watch(glowBackendServiceProvider)
+        .getUnreadNotifications(customerId),
+  );
 });
 
 final employeesProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>(
-  (ref) => ref.watch(glowBackendServiceProvider).getEmployees(),
+  (ref) => _withListFallback(
+    ref.watch(glowBackendServiceProvider).getEmployees,
+    _fallbackEmployees,
+  ),
 );
 
 final customersProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>(
-  (ref) => ref.watch(glowBackendServiceProvider).getCustomers(),
+  (ref) => _withListFallback(ref.watch(glowBackendServiceProvider).getCustomers),
 );
 
 final employeesByServiceProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, serviceId) {
-  return ref.watch(glowBackendServiceProvider).getEmployeesByService(serviceId);
+  return _withListFallback(
+    () => ref.watch(glowBackendServiceProvider).getEmployeesByService(serviceId),
+    _fallbackEmployees,
+  );
 });
 
 final availableSlotsProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, AvailableSlotsQuery>((ref, query) {
-  return ref.watch(glowBackendServiceProvider).getAvailableSlots(
-        serviceId: query.serviceId,
-        date: query.date,
-      );
+  return _withListFallback(
+    () => ref.watch(glowBackendServiceProvider).getAvailableSlots(
+          serviceId: query.serviceId,
+          date: query.date,
+        ),
+    _fallbackSlotsFor(query.date),
+  );
 });
 
 final workingHoursProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
-  return ref.watch(glowBackendServiceProvider).getWorkingHours();
+  return _withListFallback(
+    ref.watch(glowBackendServiceProvider).getWorkingHours,
+  );
 });
 
 final employeeAppointmentsProvider = FutureProvider.autoDispose
@@ -250,22 +305,26 @@ final employeeAppointmentsProvider = FutureProvider.autoDispose
 
 final holidaysProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, DateRangeQuery>((ref, query) {
-  return ref.watch(glowBackendServiceProvider).getHolidays(
-        startDate: query.startDate,
-        endDate: query.endDate,
-      );
+  return _withListFallback(
+    () => ref.watch(glowBackendServiceProvider).getHolidays(
+          startDate: query.startDate,
+          endDate: query.endDate,
+        ),
+  );
 });
 
 final activeWaitingListProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
-  return ref.watch(glowBackendServiceProvider).getActiveWaitingList();
+  return _withListFallback(
+    ref.watch(glowBackendServiceProvider).getActiveWaitingList,
+  );
 });
 
 final customerWaitingListProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, customerId) {
-  return ref
-      .watch(glowBackendServiceProvider)
-      .getCustomerWaitingList(customerId);
+  return _withListFallback(
+    () => ref.watch(glowBackendServiceProvider).getCustomerWaitingList(customerId),
+  );
 });
 
 final appLoadingProvider = StateProvider<bool>((ref) => false);
