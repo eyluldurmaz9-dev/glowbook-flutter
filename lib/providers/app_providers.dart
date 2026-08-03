@@ -40,18 +40,122 @@ final authControllerProvider =
   return AuthController(ref.watch(glowBackendServiceProvider))..loadSession();
 });
 
+const _fallbackServices = <Map<String, dynamic>>[
+  {
+    'serviceId': 1,
+    'serviceName': 'Cilt Bakimi',
+    'description':
+        "Cilt analizi, derin temizlik ve nem bakimi ile GlowBook'un imza bakim deneyimi.",
+    'serviceImage':
+        'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=900&q=80',
+    'active': true,
+  },
+  {
+    'serviceId': 2,
+    'serviceName': 'Lazer Epilasyon',
+    'description':
+        'Konforlu randevu akisiyla bolge bazli lazer epilasyon hizmetleri.',
+    'serviceImage':
+        'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=900&q=80',
+    'active': true,
+  },
+  {
+    'serviceId': 3,
+    'serviceName': 'Masaj ve Spa',
+    'description': 'Rahatlatan masaj seanslari ve spa bakimlari.',
+    'serviceImage':
+        'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=900&q=80',
+    'active': true,
+  },
+];
+
+const _fallbackOptionsByService = <int, List<Map<String, dynamic>>>{
+  1: [
+    {'optionId': 101, 'serviceId': 1, 'optionName': 'Klasik Cilt Bakimi', 'price': 900.0, 'active': true},
+    {'optionId': 102, 'serviceId': 1, 'optionName': 'Hydrafacial Bakim', 'price': 1500.0, 'active': true},
+  ],
+  2: [
+    {'optionId': 201, 'serviceId': 2, 'optionName': 'Tum Vucut', 'price': 2200.0, 'active': true},
+    {'optionId': 202, 'serviceId': 2, 'optionName': 'Yuz Bolgesi', 'price': 650.0, 'active': true},
+  ],
+  3: [
+    {'optionId': 301, 'serviceId': 3, 'optionName': 'Aromaterapi Masaji', 'price': 1200.0, 'active': true},
+    {'optionId': 302, 'serviceId': 3, 'optionName': 'Medikal Masaj', 'price': 1450.0, 'active': true},
+  ],
+};
+
+const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
+  1: [
+    {
+      'packageId': 101,
+      'serviceId': 1,
+      'serviceName': 'Cilt Bakimi',
+      'packageName': 'Glow Cilt Paketi',
+      'description': '4 seanslik yenileyici cilt bakimi paketi.',
+      'totalSession': 4,
+      'price': 5200.0,
+      'active': true,
+    },
+  ],
+  2: [
+    {
+      'packageId': 201,
+      'serviceId': 2,
+      'serviceName': 'Lazer Epilasyon',
+      'packageName': 'Lazer Devam Paketi',
+      'description': '6 seanslik avantajli lazer epilasyon paketi.',
+      'totalSession': 6,
+      'price': 11500.0,
+      'active': true,
+    },
+  ],
+  3: [
+    {
+      'packageId': 301,
+      'serviceId': 3,
+      'serviceName': 'Masaj ve Spa',
+      'packageName': 'Spa Yenilenme Paketi',
+      'description': '3 seanslik masaj ve spa paketi.',
+      'totalSession': 3,
+      'price': 3600.0,
+      'active': true,
+    },
+  ],
+};
+
+Future<List<Map<String, dynamic>>> _withCatalogFallback(
+  Future<List<Map<String, dynamic>>> Function() request,
+  List<Map<String, dynamic>> fallback,
+) async {
+  try {
+    final items = await request();
+    return items.isEmpty ? fallback : items;
+  } catch (_) {
+    return fallback;
+  }
+}
+
 final servicesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
-  return ref.watch(glowBackendServiceProvider).getServices();
+  return _withCatalogFallback(
+    ref.watch(glowBackendServiceProvider).getServices,
+    _fallbackServices,
+  );
 });
 
 final serviceOptionsProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, serviceId) {
-  return ref.watch(glowBackendServiceProvider).getServiceOptions(serviceId);
+  return _withCatalogFallback(
+    () => ref.watch(glowBackendServiceProvider).getServiceOptions(serviceId),
+    _fallbackOptionsByService[serviceId] ?? const [],
+  );
 });
 
 final servicePackagesProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, serviceId) {
-  return ref.watch(glowBackendServiceProvider).getServicePackages(serviceId);
+  return _withCatalogFallback(
+    () => ref.watch(glowBackendServiceProvider).getServicePackages(serviceId),
+    _fallbackPackagesByService[serviceId] ?? const [],
+  );
 });
 
 final allServicePackagesProvider =
@@ -61,9 +165,9 @@ final allServicePackagesProvider =
   for (final service in services) {
     final serviceId = service['serviceId'];
     if (serviceId is! int) continue;
-    final servicePackages = await ref
-        .watch(glowBackendServiceProvider)
-        .getServicePackages(serviceId);
+    final servicePackages = await ref.watch(
+      servicePackagesProvider(serviceId).future,
+    );
     packages.addAll(servicePackages);
   }
   return packages;

@@ -8,20 +8,30 @@ class SecureStorageService {
 
   final FlutterSecureStorage _storage;
 
-  Future<String?> read(String key) {
-    return _storage.read(key: key);
+  Future<String?> read(String key) async {
+    try {
+      return await _storage.read(key: key);
+    } catch (_) {
+      return null;
+    }
   }
 
-  Future<void> write(String key, String value) {
-    return _storage.write(key: key, value: value);
+  Future<void> write(String key, String value) async {
+    try {
+      await _storage.write(key: key, value: value);
+    } catch (_) {}
   }
 
-  Future<void> delete(String key) {
-    return _storage.delete(key: key);
+  Future<void> delete(String key) async {
+    try {
+      await _storage.delete(key: key);
+    } catch (_) {}
   }
 
-  Future<void> clear() {
-    return _storage.deleteAll();
+  Future<void> clear() async {
+    try {
+      await _storage.deleteAll();
+    } catch (_) {}
   }
 
   Future<String?> getAccessToken() {
