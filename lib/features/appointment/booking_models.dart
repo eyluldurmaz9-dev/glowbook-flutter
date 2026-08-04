@@ -35,6 +35,7 @@ class CustomerPackageOption {
     required this.packageId,
     required this.name,
     this.remainingSession,
+    this.totalSession,
     this.active,
   });
 
@@ -42,6 +43,7 @@ class CustomerPackageOption {
   final int? packageId;
   final String name;
   final int? remainingSession;
+  final int? totalSession;
   final bool? active;
 
   factory CustomerPackageOption.fromJson(Map<String, dynamic> json) {
@@ -50,12 +52,21 @@ class CustomerPackageOption {
       packageId: _intValue(json['packageId']),
       name: _cleanText(json['packageName']) ?? 'Paket',
       remainingSession: _intValue(json['remainingSession']),
+      totalSession: _intValue(json['totalSession']),
       active: _boolValue(json['active']),
     );
   }
 
+  int? get usedSession {
+    if (totalSession == null || remainingSession == null) return null;
+    return totalSession! - remainingSession!;
+  }
+
   bool canUseFor(List<CatalogPackage> servicePackages) {
-    if (active == false || customerPackageId == null || packageId == null) {
+    if (active == false ||
+        customerPackageId == null ||
+        packageId == null ||
+        (remainingSession ?? 0) <= 0) {
       return false;
     }
     return servicePackages.any((item) => item.id == packageId);

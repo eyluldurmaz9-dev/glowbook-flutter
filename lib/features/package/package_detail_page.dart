@@ -62,13 +62,62 @@ CatalogPackage? _firstMatchingPackage(
   return null;
 }
 
-class _PackageDetailContent extends StatelessWidget {
+class _PackageDetailContent extends ConsumerStatefulWidget {
   const _PackageDetailContent({required this.package});
 
   final CatalogPackage package;
 
   @override
+  ConsumerState<_PackageDetailContent> createState() =>
+      _PackageDetailContentState();
+}
+
+class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
+  bool _purchasing = false;
+
+  Future<void> _purchasePackage() async {
+    if (_purchasing) return;
+    final customerId =
+        ref.read(authControllerProvider).asData?.value?.customerId;
+    final packageId = widget.package.id;
+    if (customerId == null) {
+      GlowSnackBar.showInfo(
+        context,
+        'Paket satın almak için üye girişi yapmalısın.',
+      );
+      AppNavigation.go(context, AppRoutes.login);
+      return;
+    }
+    if (packageId == null) {
+      GlowSnackBar.showError(context, 'Paket bilgisi eksik.');
+      return;
+    }
+
+    setState(() => _purchasing = true);
+    try {
+      await ref
+          .read(glowBackendServiceProvider)
+          .purchasePackage(customerId, packageId);
+      ref.invalidate(customerPackagesProvider(customerId));
+      if (!mounted) return;
+      GlowSnackBar.showSuccess(
+        context,
+        'Paket satın alındı. Randevuda 1 seans kullanabilirsin.',
+      );
+      AppNavigation.go(context, AppRoutes.appointment);
+    } catch (error) {
+      if (!mounted) return;
+      GlowSnackBar.showError(context, error.toString());
+    } finally {
+      if (mounted) setState(() => _purchasing = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final session = ref.watch(authControllerProvider).asData?.value;
+    final signedIn = session?.customerId != null;
+    final package = widget.package;
     return ListView(
       children: [
         Row(
@@ -126,8 +175,17 @@ class _PackageDetailContent extends StatelessWidget {
         ),
         const SizedBox(height: 22),
         GlowButton(
-          label: 'Randevu Oluştur',
+          label: signedIn ? 'Paketi Satın Al' : 'Üye Girişi ile Satın Al',
+          icon: signedIn ? Icons.shopping_bag_outlined : Icons.login,
+          loading: _purchasing,
+          fullWidth: true,
+          onPressed: _purchasePackage,
+        ),
+        const SizedBox(height: 10),
+        GlowButton(
+          label: 'Paket Almadan Randevu Oluştur',
           icon: Icons.calendar_today_outlined,
+          variant: GlowButtonVariant.outlined,
           fullWidth: true,
           onPressed: () => AppNavigation.go(context, AppRoutes.appointment),
         ),

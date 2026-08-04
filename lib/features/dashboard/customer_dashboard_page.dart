@@ -431,7 +431,7 @@ class _PackageList extends StatelessWidget {
                                         Theme.of(context).textTheme.titleSmall,
                                   ),
                                   Text(
-                                    'Kalan seans: ${item['remainingSession'] ?? '-'}',
+                                    _packageSessionText(item),
                                     style:
                                         Theme.of(context).textTheme.bodySmall,
                                   ),
@@ -451,11 +451,6 @@ class _PackageList extends StatelessWidget {
                           label: 'Tutar',
                           value: item['purchasePrice']?.toString() ?? '-',
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Paket kullanım geçmişi için backend ayrı geçmiş endpoint’i sağlamıyor.',
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
                       ],
                     ),
                   ),
@@ -464,6 +459,16 @@ class _PackageList extends StatelessWidget {
               ],
             ),
     );
+  }
+
+  String _packageSessionText(Map<String, dynamic> item) {
+    final total = _intValue(item['totalSession']);
+    final remaining = _intValue(item['remainingSession']);
+    if (total == null || remaining == null) {
+      return 'Kalan seans: ${item['remainingSession'] ?? '-'}';
+    }
+    final used = total - remaining;
+    return 'Kullanılan: $used / $total • Kalan: $remaining seans';
   }
 }
 

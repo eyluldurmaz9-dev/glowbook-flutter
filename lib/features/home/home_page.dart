@@ -16,6 +16,7 @@ class HomePage extends ConsumerWidget {
     final services = ref.watch(servicesProvider);
     final session = ref.watch(authControllerProvider).asData?.value;
     final firstName = session?.fullName?.split(' ').first;
+    final signedIn = session?.customerId != null;
 
     return Scaffold(
       body: SafeArea(
@@ -30,6 +31,7 @@ class HomePage extends ConsumerWidget {
             child: HomeCatalogContent(
               services: mapCatalogServices(items),
               firstName: firstName,
+              signedIn: signedIn,
             ),
           ),
         ),
@@ -43,10 +45,16 @@ class HomePage extends ConsumerWidget {
 }
 
 class HomeCatalogContent extends StatelessWidget {
-  const HomeCatalogContent({super.key, required this.services, this.firstName});
+  const HomeCatalogContent({
+    super.key,
+    required this.services,
+    this.firstName,
+    this.signedIn = false,
+  });
 
   final List<CatalogService> services;
   final String? firstName;
+  final bool signedIn;
 
   @override
   Widget build(BuildContext context) {
@@ -58,12 +66,14 @@ class HomeCatalogContent extends StatelessWidget {
           GlowPageTop(
             title: 'Merhaba, ${firstName ?? 'GlowBook'}',
             subtitle: 'Hizmetleri keşfet ve randevunu planla.',
-            action: GlowIconButton(
-              icon: Icons.notifications_outlined,
-              tooltip: 'Bildirimler',
-              onPressed: () =>
-                  AppNavigation.go(context, AppRoutes.notification),
-            ),
+            action: signedIn
+                ? GlowIconButton(
+                    icon: Icons.notifications_outlined,
+                    tooltip: 'Bildirimler',
+                    onPressed: () =>
+                        AppNavigation.go(context, AppRoutes.notification),
+                  )
+                : null,
           ),
           _HomeHero(
             onBook: () => AppNavigation.go(context, AppRoutes.services),

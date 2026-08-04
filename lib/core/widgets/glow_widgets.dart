@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_shadows.dart';
@@ -6,6 +8,7 @@ import '../constants/app_spacing.dart';
 import '../navigation/app_navigation.dart';
 import '../routes/app_routes.dart';
 import '../utils/responsive.dart';
+import '../../providers/app_providers.dart';
 
 enum GlowButtonVariant { primary, secondary, outlined, text }
 
@@ -657,7 +660,7 @@ class GlowAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
-class GlowBottomNavigationBar extends StatelessWidget {
+class GlowBottomNavigationBar extends ConsumerWidget {
   const GlowBottomNavigationBar({
     super.key,
     required this.currentIndex,
@@ -668,7 +671,13 @@ class GlowBottomNavigationBar extends StatelessWidget {
   final ValueChanged<int> onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(authControllerProvider).asData?.value;
+    final signedIn = session?.customerId != null;
+    final items = signedIn ? _customerBottomItems : _guestBottomItems;
+    final location = GoRouterState.of(context).location;
+    final selectedIndex = _bottomIndexForLocation(location, items);
+
     return SafeArea(
       top: false,
       child: Center(
@@ -682,34 +691,16 @@ class GlowBottomNavigationBar extends StatelessWidget {
               border: Border(top: BorderSide(color: AppColors.border)),
             ),
             child: NavigationBar(
-              selectedIndex: currentIndex,
-              onDestinationSelected: onTap,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home),
-                  label: 'Ana Sayfa',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.spa_outlined),
-                  selectedIcon: Icon(Icons.spa),
-                  label: 'Hizmetler',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.calendar_today_outlined),
-                  selectedIcon: Icon(Icons.calendar_today),
-                  label: 'Randevu',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.notifications_outlined),
-                  selectedIcon: Icon(Icons.notifications),
-                  label: 'Bildirim',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person),
-                  label: 'Profil',
-                ),
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (index) =>
+                  AppNavigation.go(context, items[index].route),
+              destinations: [
+                for (final item in items)
+                  NavigationDestination(
+                    icon: Icon(item.icon),
+                    selectedIcon: Icon(item.selectedIcon ?? item.icon),
+                    label: item.label,
+                  ),
               ],
             ),
           ),
@@ -717,6 +708,59 @@ class GlowBottomNavigationBar extends StatelessWidget {
       ),
     );
   }
+}
+
+const _customerBottomItems = [
+  GlowNavigationItem(
+    label: 'Ana Sayfa',
+    icon: Icons.home_outlined,
+    selectedIcon: Icons.home,
+    route: AppRoutes.home,
+  ),
+  GlowNavigationItem(
+    label: 'Hizmetler',
+    icon: Icons.spa_outlined,
+    selectedIcon: Icons.spa,
+    route: AppRoutes.services,
+  ),
+  GlowNavigationItem(
+    label: 'Randevu',
+    icon: Icons.calendar_today_outlined,
+    selectedIcon: Icons.calendar_today,
+    route: AppRoutes.appointment,
+  ),
+  GlowNavigationItem(
+    label: 'Bildirim',
+    icon: Icons.notifications_outlined,
+    selectedIcon: Icons.notifications,
+    route: AppRoutes.notification,
+  ),
+  GlowNavigationItem(
+    label: 'Profil',
+    icon: Icons.person_outline,
+    selectedIcon: Icons.person,
+    route: AppRoutes.profile,
+  ),
+];
+
+const _guestBottomItems = [
+  GlowNavigationItem(
+    label: 'Paketler',
+    icon: Icons.inventory_2_outlined,
+    selectedIcon: Icons.inventory_2,
+    route: AppRoutes.packages,
+  ),
+  GlowNavigationItem(
+    label: 'Randevu',
+    icon: Icons.calendar_today_outlined,
+    selectedIcon: Icons.calendar_today,
+    route: AppRoutes.appointment,
+  ),
+];
+
+int _bottomIndexForLocation(String location, List<GlowNavigationItem> items) {
+  final index = items.indexWhere((item) => location.startsWith(item.route));
+  return index < 0 ? 0 : index;
 }
 
 class GlowWebNavigationRail extends StatelessWidget {
@@ -763,10 +807,12 @@ class GlowNavigationItem {
     required this.label,
     required this.icon,
     required this.route,
+    this.selectedIcon,
   });
 
   final String label;
   final IconData icon;
+  final IconData? selectedIcon;
   final String route;
 }
 

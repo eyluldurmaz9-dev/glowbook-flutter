@@ -668,7 +668,7 @@ class _OptionAndPackageStep extends StatelessWidget {
                   for (final item in usable) ...[
                     _SelectableTile(
                       title: item.name,
-                      subtitle: '${item.remainingSession ?? 0} seans kaldı',
+                      subtitle: _packageUsageText(item),
                       icon: Icons.inventory_2_outlined,
                       selected: selectedPackage?.customerPackageId ==
                           item.customerPackageId,
@@ -685,6 +685,15 @@ class _OptionAndPackageStep extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _packageUsageText(CustomerPackageOption item) {
+    final used = item.usedSession;
+    final remaining = item.remainingSession ?? 0;
+    if (used == null || item.totalSession == null) {
+      return '$remaining seans kaldı';
+    }
+    return 'Bu randevuda 1 seans kullanılır • Kullanılan $used/${item.totalSession}, kalan $remaining';
   }
 }
 
