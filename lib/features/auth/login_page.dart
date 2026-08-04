@@ -378,27 +378,15 @@ class _AuthIntro extends StatelessWidget {
         const GlowEyebrow('Premium güzellik deneyimi'),
         const SizedBox(height: 16),
         Text(
-          role == 'CUSTOMER'
-              ? 'Güzelliği planlamanın\nen kolay yolu.'
-              : 'GlowBook ile çalışma günün\ndaha düzenli.',
+          'Güzelliğin ritmi\nGlowBook ile başlar.',
           style: Theme.of(context).textTheme.displayMedium,
         ),
         const SizedBox(height: 18),
         Text(
-          'Beyaz ve toz pembe arayüz, güvenli giriş ve rolüne özel yönlendirme ile hazır.',
+          'Randevudan bakım deneyimine kadar her adım sade, zarif ve kusursuz.',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: AppColors.secondaryText,
               ),
-        ),
-        const SizedBox(height: 20),
-        const Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            GlowPill(label: 'JWT güvenliği'),
-            GlowPill(label: 'Responsive deneyim'),
-            GlowPill(label: 'Rol bazlı erişim'),
-          ],
         ),
       ],
     );
