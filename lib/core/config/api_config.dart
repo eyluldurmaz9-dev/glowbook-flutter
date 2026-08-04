@@ -5,6 +5,7 @@ class ApiConfig {
 
   static const bool _isWeb = bool.fromEnvironment('dart.library.html') ||
       bool.fromEnvironment('dart.library.js_interop');
+  static const bool _isRelease = bool.fromEnvironment('dart.vm.product');
   static const String _productionBaseUrl =
       'https://glowbook-production-7b59.up.railway.app';
   static const String _androidEmulatorBaseUrl = 'http://10.0.2.2:8080';
@@ -15,7 +16,7 @@ class ApiConfig {
 
   static const String baseUrl = _configuredBaseUrl != ''
       ? _configuredBaseUrl
-      : (_isWeb ? _productionBaseUrl : _androidEmulatorBaseUrl);
+      : (_isWeb || _isRelease ? _productionBaseUrl : _androidEmulatorBaseUrl);
 
   static const Duration connectTimeout = AppConstants.connectTimeout;
   static const Duration receiveTimeout = AppConstants.receiveTimeout;

@@ -26,6 +26,9 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
   CatalogService? _service;
   CatalogOption? _option;
   CustomerPackageOption? _customerPackage;
+  var _candidateDates = <DateTime>[
+    BookingDateUtils.today().add(const Duration(days: 1)),
+  ];
   DateTime _date = BookingDateUtils.today().add(const Duration(days: 1));
   String? _time;
   BookingSlot? _slot;
@@ -47,13 +50,18 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     final session = auth.asData?.value;
     final customerId = session?.customerId;
     final services = ref.watch(servicesProvider);
+    final slotDates = _candidateDates
+        .map(BookingDateUtils.formatDate)
+        .toSet()
+        .toList()
+      ..sort();
     final slots = _service == null
         ? null
         : ref.watch(
-            availableSlotsProvider(
-              AvailableSlotsQuery(
+            availableSlotsForDatesProvider(
+              AvailableSlotsBatchQuery(
                 serviceId: _service!.id ?? 0,
-                date: BookingDateUtils.formatDate(_date),
+                dates: slotDates,
               ),
             ),
           );
@@ -186,11 +194,13 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
         );
       case 2:
         return _DateStep(
-          selectedDate: _date,
+          selectedDates: _candidateDates,
           onSelected: (date) {
             if (BookingDateUtils.isPast(date)) return;
+            final normalized = BookingDateUtils.normalize(date);
             setState(() {
-              _date = BookingDateUtils.normalize(date);
+              _candidateDates = _toggleDate(_candidateDates, normalized);
+              _date = _candidateDates.first;
               _time = null;
               _slot = null;
             });
@@ -199,9 +209,11 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
       case 3:
         return _TimeStep(
           slots: slots,
+          selectedDate: _date,
           selectedTime: _time,
-          onTimeSelected: (time) => setState(() {
-            _time = time;
+          onTimeSelected: (choice) => setState(() {
+            _date = choice.date;
+            _time = choice.time;
             _slot = null;
           }),
           onRetry: _refreshSlots,
@@ -211,6 +223,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
       case 4:
         return _EmployeeStep(
           slots: slots,
+          selectedDate: _date,
           selectedTime: _time,
           selectedSlot: _slot,
           onSelected: (slot) => setState(() => _slot = slot),
@@ -245,6 +258,23 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     });
   }
 
+  List<DateTime> _toggleDate(List<DateTime> dates, DateTime date) {
+    final exists = dates.any((item) =>
+        BookingDateUtils.formatDate(item) == BookingDateUtils.formatDate(date));
+    if (exists && dates.length == 1) {
+      return dates;
+    }
+    final updated = exists
+        ? dates
+            .where((item) =>
+                BookingDateUtils.formatDate(item) !=
+                BookingDateUtils.formatDate(date))
+            .toList()
+        : [...dates, date];
+    updated.sort((a, b) => a.compareTo(b));
+    return updated;
+  }
+
   void _goNext() {
     if (!_canContinue(null)) return;
     setState(() => _step++);
@@ -257,7 +287,8 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
       case 1:
         return _option?.id != null;
       case 2:
-        return !BookingDateUtils.isPast(_date);
+        return _candidateDates.isNotEmpty &&
+            _candidateDates.every((date) => !BookingDateUtils.isPast(date));
       case 3:
         return _time != null;
       case 4:
@@ -278,10 +309,11 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     final serviceId = _service?.id;
     if (serviceId == null) return;
     ref.invalidate(
-      availableSlotsProvider(
-        AvailableSlotsQuery(
+      availableSlotsForDatesProvider(
+        AvailableSlotsBatchQuery(
           serviceId: serviceId,
-          date: BookingDateUtils.formatDate(_date),
+          dates: (_candidateDates.map(BookingDateUtils.formatDate).toList()
+            ..sort()),
         ),
       ),
     );
@@ -657,9 +689,9 @@ class _OptionAndPackageStep extends StatelessWidget {
 }
 
 class _DateStep extends StatelessWidget {
-  const _DateStep({required this.selectedDate, required this.onSelected});
+  const _DateStep({required this.selectedDates, required this.onSelected});
 
-  final DateTime selectedDate;
+  final List<DateTime> selectedDates;
   final ValueChanged<DateTime> onSelected;
 
   @override
@@ -667,9 +699,18 @@ class _DateStep extends StatelessWidget {
     final today = BookingDateUtils.today();
     final dates =
         List.generate(14, (index) => today.add(Duration(days: index)));
+    final selectedLabels = selectedDates
+        .map(BookingDateUtils.formatDate)
+        .toList()
+      ..sort();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(
+          'Birden fazla tarih secebilirsin. Uygun saatler sonraki adimda birlikte listelenir.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 12),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -677,8 +718,8 @@ class _DateStep extends StatelessWidget {
               for (final date in dates) ...[
                 _DateChip(
                   date: date,
-                  selected: BookingDateUtils.formatDate(date) ==
-                      BookingDateUtils.formatDate(selectedDate),
+                  selected:
+                      selectedLabels.contains(BookingDateUtils.formatDate(date)),
                   onTap: () => onSelected(date),
                 ),
                 const SizedBox(width: 8),
@@ -696,12 +737,26 @@ class _DateStep extends StatelessWidget {
               context: context,
               firstDate: today,
               lastDate: today.add(const Duration(days: 90)),
-              initialDate:
-                  BookingDateUtils.isPast(selectedDate) ? today : selectedDate,
+              initialDate: selectedDates.isEmpty ? today : selectedDates.first,
               locale: const Locale('tr'),
             );
             if (picked != null) onSelected(picked);
           },
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final label in selectedLabels)
+              Chip(
+                label: Text(label),
+                deleteIcon: const Icon(Icons.close, size: 16),
+                onDeleted: selectedDates.length == 1
+                    ? null
+                    : () => onSelected(DateTime.parse(label)),
+              ),
+          ],
         ),
       ],
     );
@@ -711,6 +766,7 @@ class _DateStep extends StatelessWidget {
 class _TimeStep extends StatelessWidget {
   const _TimeStep({
     required this.slots,
+    required this.selectedDate,
     required this.selectedTime,
     required this.onTimeSelected,
     required this.onRetry,
@@ -719,8 +775,9 @@ class _TimeStep extends StatelessWidget {
   });
 
   final AsyncValue<List<Map<String, dynamic>>>? slots;
+  final DateTime selectedDate;
   final String? selectedTime;
-  final ValueChanged<String> onTimeSelected;
+  final ValueChanged<BookingTimeChoice> onTimeSelected;
   final VoidCallback onRetry;
   final VoidCallback onJoinWaitlist;
   final bool joiningWaitlist;
@@ -735,12 +792,8 @@ class _TimeStep extends StatelessWidget {
         onRetry: onRetry,
       ),
       data: (items) {
-        final times = mapBookingSlots(items)
-            .expand((slot) => slot.availableTimes)
-            .toSet()
-            .toList()
-          ..sort();
-        if (times.isEmpty) {
+        final choices = _bookingChoices(mapBookingSlots(items));
+        if (choices.isEmpty) {
           return Column(
             children: [
               const GlowEmptyState(
@@ -763,22 +816,63 @@ class _TimeStep extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final time in times)
-              ChoiceChip(
-                label: Text(time),
-                selected: selectedTime == time,
-                onSelected: (_) => onTimeSelected(time),
+            for (final choice in choices)
+              FilterChip(
+                label: Text(
+                  '${BookingDateUtils.formatDate(choice.date)}  ${choice.time}  (${choice.employeeCount} uzman)',
+                ),
+                selected: selectedTime == choice.time &&
+                    BookingDateUtils.formatDate(selectedDate) ==
+                        BookingDateUtils.formatDate(choice.date),
+                onSelected: (_) => onTimeSelected(choice),
               ),
           ],
         );
       },
     );
   }
+
+  List<BookingTimeChoice> _bookingChoices(List<BookingSlot> slots) {
+    final counts = <String, int>{};
+    for (final slot in slots) {
+      final date = BookingDateUtils.formatDate(slot.date);
+      for (final time in slot.availableTimes) {
+        final key = '$date|$time';
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    final choices = counts.entries.map((entry) {
+      final parts = entry.key.split('|');
+      return BookingTimeChoice(
+        date: DateTime.parse(parts.first),
+        time: parts.last,
+        employeeCount: entry.value,
+      );
+    }).toList()
+      ..sort((a, b) {
+        final dateCompare = a.date.compareTo(b.date);
+        return dateCompare != 0 ? dateCompare : a.time.compareTo(b.time);
+      });
+    return choices;
+  }
+}
+
+class BookingTimeChoice {
+  const BookingTimeChoice({
+    required this.date,
+    required this.time,
+    required this.employeeCount,
+  });
+
+  final DateTime date;
+  final String time;
+  final int employeeCount;
 }
 
 class _EmployeeStep extends StatelessWidget {
   const _EmployeeStep({
     required this.slots,
+    required this.selectedDate,
     required this.selectedTime,
     required this.selectedSlot,
     required this.onSelected,
@@ -786,6 +880,7 @@ class _EmployeeStep extends StatelessWidget {
   });
 
   final AsyncValue<List<Map<String, dynamic>>>? slots;
+  final DateTime selectedDate;
   final String? selectedTime;
   final BookingSlot? selectedSlot;
   final ValueChanged<BookingSlot> onSelected;
@@ -805,7 +900,10 @@ class _EmployeeStep extends StatelessWidget {
       ),
       data: (items) {
         final employees = mapBookingSlots(items)
-            .where((slot) => slot.hasTime(selectedTime!))
+            .where((slot) =>
+                BookingDateUtils.formatDate(slot.date) ==
+                    BookingDateUtils.formatDate(selectedDate) &&
+                slot.hasTime(selectedTime!))
             .toList(growable: false);
         if (employees.isEmpty) {
           return const GlowEmptyState(
@@ -818,7 +916,8 @@ class _EmployeeStep extends StatelessWidget {
             for (final slot in employees) ...[
               _SelectableTile(
                 title: slot.employeeName,
-                subtitle: selectedTime!,
+                subtitle:
+                    '${BookingDateUtils.formatDate(selectedDate)} - $selectedTime',
                 icon: Icons.person_outline,
                 selected: selectedSlot?.employeeId == slot.employeeId,
                 onTap: () => onSelected(slot),

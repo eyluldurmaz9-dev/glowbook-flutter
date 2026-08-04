@@ -67,20 +67,54 @@ const _fallbackServices = <Map<String, dynamic>>[
         'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=900&q=80',
     'active': true,
   },
+  {
+    'serviceId': 4,
+    'serviceName': 'Kas ve Kirpik',
+    'description': 'Kas alimi, kas tasarimi, lifting ve kirpik bakimi.',
+    'serviceImage':
+        'https://images.unsplash.com/photo-1519415510236-718bdfcd89c8?auto=format&fit=crop&w=900&q=80',
+    'active': true,
+  },
+  {
+    'serviceId': 5,
+    'serviceName': 'Bolgesel Incelme',
+    'description': 'Bolgesel incelme, sikilasma ve selulit bakimi seanslari.',
+    'serviceImage':
+        'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=900&q=80',
+    'active': true,
+  },
 ];
 
 const _fallbackOptionsByService = <int, List<Map<String, dynamic>>>{
   1: [
     {'optionId': 101, 'serviceId': 1, 'optionName': 'Klasik Cilt Bakimi', 'price': 900.0, 'active': true},
     {'optionId': 102, 'serviceId': 1, 'optionName': 'Hydrafacial Bakim', 'price': 1500.0, 'active': true},
+    {'optionId': 103, 'serviceId': 1, 'optionName': 'Anti Aging Bakim', 'price': 1800.0, 'active': true},
+    {'optionId': 104, 'serviceId': 1, 'optionName': 'Leke Bakimi', 'price': 1650.0, 'active': true},
+    {'optionId': 105, 'serviceId': 1, 'optionName': 'Akne Bakimi', 'price': 1400.0, 'active': true},
   ],
   2: [
-    {'optionId': 201, 'serviceId': 2, 'optionName': 'Tum Vucut', 'price': 2200.0, 'active': true},
-    {'optionId': 202, 'serviceId': 2, 'optionName': 'Yuz Bolgesi', 'price': 650.0, 'active': true},
+    {'optionId': 201, 'serviceId': 2, 'optionName': 'Tek Bolge', 'price': 450.0, 'active': true},
+    {'optionId': 202, 'serviceId': 2, 'optionName': '3 Bolge', 'price': 1100.0, 'active': true},
+    {'optionId': 203, 'serviceId': 2, 'optionName': '5 Bolge', 'price': 1650.0, 'active': true},
+    {'optionId': 204, 'serviceId': 2, 'optionName': 'Yuz Bolgesi', 'price': 650.0, 'active': true},
+    {'optionId': 205, 'serviceId': 2, 'optionName': 'Tum Vucut', 'price': 2200.0, 'active': true},
   ],
   3: [
     {'optionId': 301, 'serviceId': 3, 'optionName': 'Aromaterapi Masaji', 'price': 1200.0, 'active': true},
     {'optionId': 302, 'serviceId': 3, 'optionName': 'Medikal Masaj', 'price': 1450.0, 'active': true},
+  ],
+  4: [
+    {'optionId': 401, 'serviceId': 4, 'optionName': 'Kas Alimi', 'price': 350.0, 'active': true},
+    {'optionId': 402, 'serviceId': 4, 'optionName': 'Kas Tasarimi', 'price': 650.0, 'active': true},
+    {'optionId': 403, 'serviceId': 4, 'optionName': 'Kas Laminasyonu', 'price': 900.0, 'active': true},
+    {'optionId': 404, 'serviceId': 4, 'optionName': 'Kirpik Lifting', 'price': 950.0, 'active': true},
+  ],
+  5: [
+    {'optionId': 501, 'serviceId': 5, 'optionName': 'Karin Bolgesi', 'price': 1450.0, 'active': true},
+    {'optionId': 502, 'serviceId': 5, 'optionName': 'Bacak Bolgesi', 'price': 1550.0, 'active': true},
+    {'optionId': 503, 'serviceId': 5, 'optionName': 'Kol Bolgesi', 'price': 1250.0, 'active': true},
+    {'optionId': 504, 'serviceId': 5, 'optionName': 'Selulit Bakimi', 'price': 1650.0, 'active': true},
   ],
 };
 
@@ -125,7 +159,7 @@ const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
 
 const _fallbackEmployees = <Map<String, dynamic>>[
   {
-    'employeeId': 'GLW-001',
+    'employeeId': 'GLW001',
     'firstName': 'GlowBook',
     'lastName': 'Uzmani',
     'fullName': 'GlowBook Uzmani',
@@ -161,7 +195,7 @@ Future<List<Map<String, dynamic>>> _withListFallback(
 List<Map<String, dynamic>> _fallbackSlotsFor(String date) {
   return [
     {
-      'employeeId': 'GLW-001',
+      'employeeId': 'GLW001',
       'employeeName': 'GlowBook Uzmani',
       'appointmentDate': date,
       'availableTimes': const ['10:00', '11:00', '14:00', '15:00', '16:00'],
@@ -286,6 +320,21 @@ final availableSlotsProvider = FutureProvider.autoDispose
   );
 });
 
+final availableSlotsForDatesProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, AvailableSlotsBatchQuery>(
+        (ref, query) async {
+  final results = <Map<String, dynamic>>[];
+  for (final date in query.dates) {
+    final daySlots = await ref.watch(
+      availableSlotsProvider(
+        AvailableSlotsQuery(serviceId: query.serviceId, date: date),
+      ).future,
+    );
+    results.addAll(daySlots);
+  }
+  return results;
+});
+
 final workingHoursProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
   return _withListFallback(
@@ -344,6 +393,26 @@ class AvailableSlotsQuery {
 
   @override
   int get hashCode => Object.hash(serviceId, date);
+}
+
+class AvailableSlotsBatchQuery {
+  const AvailableSlotsBatchQuery({
+    required this.serviceId,
+    required this.dates,
+  });
+
+  final int serviceId;
+  final List<String> dates;
+
+  @override
+  bool operator ==(Object other) {
+    return other is AvailableSlotsBatchQuery &&
+        other.serviceId == serviceId &&
+        other.dates.join('|') == dates.join('|');
+  }
+
+  @override
+  int get hashCode => Object.hash(serviceId, dates.join('|'));
 }
 
 class DateRangeQuery {
