@@ -706,6 +706,13 @@ class _DateStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = BookingDateUtils.today();
+    final lastDate = today.add(const Duration(days: 90));
+    final initialDate = selectedDates.isEmpty ? today : selectedDates.first;
+    final calendarDate = initialDate.isBefore(today)
+        ? today
+        : initialDate.isAfter(lastDate)
+            ? lastDate
+            : initialDate;
     final dates =
         List.generate(14, (index) => today.add(Duration(days: index)));
     final selectedLabels = selectedDates
@@ -718,6 +725,19 @@ class _DateStep extends StatelessWidget {
         Text(
           'Birden fazla tarih secebilirsin. Uygun saatler sonraki adimda birlikte listelenir.',
           style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        GlowCard(
+          padding: const EdgeInsets.all(8),
+          backgroundColor: AppColors.petal,
+          borderColor: AppColors.softBorder,
+          child: CalendarDatePicker(
+            initialDate: calendarDate,
+            firstDate: today,
+            lastDate: lastDate,
+            currentDate: calendarDate,
+            onDateChanged: onSelected,
+          ),
         ),
         const SizedBox(height: 12),
         SingleChildScrollView(
@@ -745,8 +765,8 @@ class _DateStep extends StatelessWidget {
             final picked = await showDatePicker(
               context: context,
               firstDate: today,
-              lastDate: today.add(const Duration(days: 90)),
-              initialDate: selectedDates.isEmpty ? today : selectedDates.first,
+              lastDate: lastDate,
+              initialDate: calendarDate,
               locale: const Locale('tr'),
             );
             if (picked != null) onSelected(picked);
