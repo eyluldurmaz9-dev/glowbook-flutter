@@ -66,6 +66,7 @@ class CatalogPackage {
     this.description,
     this.totalSession,
     this.priceText,
+    this.validityDays,
     this.image,
     this.active,
   });
@@ -77,6 +78,7 @@ class CatalogPackage {
   final String? description;
   final int? totalSession;
   final String? priceText;
+  final int? validityDays;
   final String? image;
   final bool? active;
 
@@ -89,6 +91,7 @@ class CatalogPackage {
       description: _cleanText(json['description']),
       totalSession: _intValue(json['totalSession']),
       priceText: _priceText(json['price']),
+      validityDays: _intValue(json['validityDays']),
       image: _cleanText(json['packageImage']),
       active: _boolValue(json['active']),
     );
