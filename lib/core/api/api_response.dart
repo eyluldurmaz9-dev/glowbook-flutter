@@ -13,6 +13,12 @@ T unwrapApiData<T>(dynamic responseData) {
     }
     return responseData['data'] as T;
   }
+  if (responseData == null || responseData is String) {
+    throw const ApiException(
+      'Sunucudan geçersiz JSON yanıtı alındı.',
+      type: ApiFailureType.invalidJson,
+    );
+  }
   return responseData as T;
 }
 
@@ -21,7 +27,10 @@ List<Map<String, dynamic>> unwrapApiList(dynamic responseData) {
   if (data is List) {
     return data.whereType<Map<String, dynamic>>().toList();
   }
-  return const [];
+  throw const ApiException(
+    'Sunucu liste yanıtı uygulamayla uyumlu değil.',
+    type: ApiFailureType.dtoParsing,
+  );
 }
 
 Map<String, dynamic> unwrapApiMap(dynamic responseData) {
@@ -29,5 +38,8 @@ Map<String, dynamic> unwrapApiMap(dynamic responseData) {
   if (data is Map<String, dynamic>) {
     return data;
   }
-  return const {};
+  throw const ApiException(
+    'Sunucu yanıtı uygulamayla uyumlu değil.',
+    type: ApiFailureType.dtoParsing,
+  );
 }

@@ -13,6 +13,10 @@ class ApiConfig {
     'API_BASE_URL',
     defaultValue: '',
   );
+  static const bool allowDemoData = bool.fromEnvironment(
+    'ENABLE_DEMO_DATA',
+    defaultValue: false,
+  );
 
   static const String baseUrl = _configuredBaseUrl != ''
       ? _configuredBaseUrl

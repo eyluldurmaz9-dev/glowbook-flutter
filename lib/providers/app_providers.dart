@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/api/api_client.dart';
+import '../core/config/api_config.dart';
 import '../core/services/api_service.dart';
 import '../core/services/glow_backend_service.dart';
 import '../core/storage/preferences_service.dart';
@@ -241,6 +242,7 @@ Future<List<Map<String, dynamic>>> _withCatalogFallback(
     final items = await request();
     return items.isEmpty ? fallback : items;
   } catch (_) {
+    if (!ApiConfig.allowDemoData) rethrow;
     return fallback;
   }
 }
@@ -252,6 +254,7 @@ Future<List<Map<String, dynamic>>> _withListFallback(
   try {
     return await request();
   } catch (_) {
+    if (!ApiConfig.allowDemoData) rethrow;
     return fallback;
   }
 }
@@ -300,7 +303,11 @@ final allServicePackagesProvider =
     final servicePackages = await ref.watch(
       servicePackagesProvider(serviceId).future,
     );
-    packages.addAll(servicePackages);
+    packages.addAll(servicePackages.map((item) => {
+          ...item,
+          if (item['packageImage'] == null && service['serviceImage'] != null)
+            'packageImage': service['serviceImage'],
+        }));
   }
   return packages;
 });

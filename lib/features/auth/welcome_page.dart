@@ -204,7 +204,7 @@ class _HeroPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.white.withOpacity(.92),
+        color: AppColors.white.withValues(alpha: .92),
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(100),
       ),

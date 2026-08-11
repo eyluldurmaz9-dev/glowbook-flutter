@@ -134,15 +134,20 @@ void main() {
 Future<void> _pumpBooking(
   WidgetTester tester, {
   required _FakeGlowBackendService backend,
-  List<Map<String, dynamic>> slots = const [
+  List<Map<String, dynamic>>? slots,
+}) async {
+  final today = DateTime.now();
+  final slotDate = '${today.year.toString().padLeft(4, '0')}-'
+      '${today.month.toString().padLeft(2, '0')}-'
+      '${today.day.toString().padLeft(2, '0')}';
+  final effectiveSlots = slots ?? [
     {
       'employeeId': 'EMP-1',
       'employeeName': 'Elif Yılmaz',
-      'appointmentDate': '2026-08-01',
+      'appointmentDate': slotDate,
       'availableTimes': ['10:00:00'],
     }
-  ],
-}) async {
+  ];
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -173,7 +178,7 @@ Future<void> _pumpBooking(
             .overrideWith((ref, serviceId) async => const []),
         customerPackagesProvider
             .overrideWith((ref, customerId) async => const []),
-        availableSlotsProvider.overrideWith((ref, query) async => slots),
+        availableSlotsProvider.overrideWith((ref, query) async => effectiveSlots),
         customerUpcomingAppointmentsProvider.overrideWith(
           (ref, customerId) async => const [],
         ),
@@ -198,7 +203,7 @@ Future<void> _completeSelections(WidgetTester tester) async {
   await tester.pumpAndSettle();
   await _tapText(tester, 'Devam', last: true);
   await tester.pumpAndSettle();
-  await _tapText(tester, '10:00');
+  await _tapTextContaining(tester, '10:00');
   await tester.pumpAndSettle();
   await _tapText(tester, 'Devam', last: true);
   await tester.pumpAndSettle();
@@ -223,6 +228,15 @@ Future<void> _tapText(
     fail('Metin bulunamadı: $text. Ekrandaki metinler: $texts');
   }
   final finder = last ? matches.last : matches.first;
+  await tester.ensureVisible(finder);
+  await tester.tap(finder, warnIfMissed: false);
+}
+
+Future<void> _tapTextContaining(WidgetTester tester, String text) async {
+  final finder = find.textContaining(text).first;
+  if (finder.evaluate().isEmpty) {
+    fail('Metin parçası bulunamadı: $text');
+  }
   await tester.ensureVisible(finder);
   await tester.tap(finder, warnIfMissed: false);
 }

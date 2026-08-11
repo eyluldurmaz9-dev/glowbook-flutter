@@ -27,12 +27,12 @@ void main() {
     );
     expect(
       safeApiMessage(statusCode: 409, rawMessage: 'conflict'),
-      'Bu kayıt başka bir veriyle çakışıyor. Bilgileri kontrol et.',
+      'Bu kayıt zaten mevcut veya başka bir kayıtla çakışıyor.',
     );
     expect(
       safeApiMessage(
           statusCode: 400, rawMessage: 'firstName: must not be blank'),
-      'Form bilgilerini kontrol edip tekrar dene.',
+      'Gönderilen bilgileri kontrol edip tekrar dene.',
     );
   });
 }

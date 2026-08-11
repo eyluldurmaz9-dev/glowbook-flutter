@@ -675,8 +675,15 @@ class GlowBottomNavigationBar extends ConsumerWidget {
     final session = ref.watch(authControllerProvider).asData?.value;
     final signedIn = session?.customerId != null;
     final items = signedIn ? _customerBottomItems : _guestBottomItems;
-    final location = GoRouterState.of(context).location;
-    final selectedIndex = _bottomIndexForLocation(location, items);
+    String? location;
+    try {
+      location = GoRouterState.of(context).location;
+    } catch (_) {
+      // Widget tests and embedded hosts may not have a page-route GoRouter.
+    }
+    final selectedIndex = location == null
+        ? currentIndex.clamp(0, items.length - 1)
+        : _bottomIndexForLocation(location, items);
 
     return SafeArea(
       top: false,
