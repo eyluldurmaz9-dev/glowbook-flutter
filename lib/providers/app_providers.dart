@@ -88,34 +88,154 @@ const _fallbackServices = <Map<String, dynamic>>[
 
 const _fallbackOptionsByService = <int, List<Map<String, dynamic>>>{
   1: [
-    {'optionId': 101, 'serviceId': 1, 'optionName': 'Klasik Cilt Bakimi', 'price': 900.0, 'active': true},
-    {'optionId': 102, 'serviceId': 1, 'optionName': 'Hydrafacial Bakim', 'price': 1500.0, 'active': true},
-    {'optionId': 103, 'serviceId': 1, 'optionName': 'Anti Aging Bakim', 'price': 1800.0, 'active': true},
-    {'optionId': 104, 'serviceId': 1, 'optionName': 'Leke Bakimi', 'price': 1650.0, 'active': true},
-    {'optionId': 105, 'serviceId': 1, 'optionName': 'Akne Bakimi', 'price': 1400.0, 'active': true},
+    {
+      'optionId': 101,
+      'serviceId': 1,
+      'optionName': 'Klasik Cilt Bakimi',
+      'price': 900.0,
+      'active': true
+    },
+    {
+      'optionId': 102,
+      'serviceId': 1,
+      'optionName': 'Hydrafacial Bakim',
+      'price': 1500.0,
+      'active': true
+    },
+    {
+      'optionId': 103,
+      'serviceId': 1,
+      'optionName': 'Anti Aging Bakim',
+      'price': 1800.0,
+      'active': true
+    },
+    {
+      'optionId': 104,
+      'serviceId': 1,
+      'optionName': 'Leke Bakimi',
+      'price': 1650.0,
+      'active': true
+    },
+    {
+      'optionId': 105,
+      'serviceId': 1,
+      'optionName': 'Akne Bakimi',
+      'price': 1400.0,
+      'active': true
+    },
   ],
   2: [
-    {'optionId': 201, 'serviceId': 2, 'optionName': 'Tek Bolge', 'price': 450.0, 'active': true},
-    {'optionId': 202, 'serviceId': 2, 'optionName': '3 Bolge', 'price': 1100.0, 'active': true},
-    {'optionId': 203, 'serviceId': 2, 'optionName': '5 Bolge', 'price': 1650.0, 'active': true},
-    {'optionId': 204, 'serviceId': 2, 'optionName': 'Yuz Bolgesi', 'price': 650.0, 'active': true},
-    {'optionId': 205, 'serviceId': 2, 'optionName': 'Tum Vucut', 'price': 2200.0, 'active': true},
+    {
+      'optionId': 201,
+      'serviceId': 2,
+      'optionName': 'Tek Bolge',
+      'price': 450.0,
+      'active': true
+    },
+    {
+      'optionId': 202,
+      'serviceId': 2,
+      'optionName': '3 Bolge',
+      'price': 1100.0,
+      'active': true
+    },
+    {
+      'optionId': 203,
+      'serviceId': 2,
+      'optionName': '5 Bolge',
+      'price': 1650.0,
+      'active': true
+    },
+    {
+      'optionId': 204,
+      'serviceId': 2,
+      'optionName': 'Yuz Bolgesi',
+      'price': 650.0,
+      'active': true
+    },
+    {
+      'optionId': 205,
+      'serviceId': 2,
+      'optionName': 'Tum Vucut',
+      'price': 2200.0,
+      'active': true
+    },
   ],
   3: [
-    {'optionId': 301, 'serviceId': 3, 'optionName': 'Aromaterapi Masaji', 'price': 1200.0, 'active': true},
-    {'optionId': 302, 'serviceId': 3, 'optionName': 'Medikal Masaj', 'price': 1450.0, 'active': true},
+    {
+      'optionId': 301,
+      'serviceId': 3,
+      'optionName': 'Aromaterapi Masaji',
+      'price': 1200.0,
+      'active': true
+    },
+    {
+      'optionId': 302,
+      'serviceId': 3,
+      'optionName': 'Medikal Masaj',
+      'price': 1450.0,
+      'active': true
+    },
   ],
   4: [
-    {'optionId': 401, 'serviceId': 4, 'optionName': 'Kas Alimi', 'price': 350.0, 'active': true},
-    {'optionId': 402, 'serviceId': 4, 'optionName': 'Kas Tasarimi', 'price': 650.0, 'active': true},
-    {'optionId': 403, 'serviceId': 4, 'optionName': 'Kas Laminasyonu', 'price': 900.0, 'active': true},
-    {'optionId': 404, 'serviceId': 4, 'optionName': 'Kirpik Lifting', 'price': 950.0, 'active': true},
+    {
+      'optionId': 401,
+      'serviceId': 4,
+      'optionName': 'Kas Alimi',
+      'price': 350.0,
+      'active': true
+    },
+    {
+      'optionId': 402,
+      'serviceId': 4,
+      'optionName': 'Kas Tasarimi',
+      'price': 650.0,
+      'active': true
+    },
+    {
+      'optionId': 403,
+      'serviceId': 4,
+      'optionName': 'Kas Laminasyonu',
+      'price': 900.0,
+      'active': true
+    },
+    {
+      'optionId': 404,
+      'serviceId': 4,
+      'optionName': 'Kirpik Lifting',
+      'price': 950.0,
+      'active': true
+    },
   ],
   5: [
-    {'optionId': 501, 'serviceId': 5, 'optionName': 'Karin Bolgesi', 'price': 1450.0, 'active': true},
-    {'optionId': 502, 'serviceId': 5, 'optionName': 'Bacak Bolgesi', 'price': 1550.0, 'active': true},
-    {'optionId': 503, 'serviceId': 5, 'optionName': 'Kol Bolgesi', 'price': 1250.0, 'active': true},
-    {'optionId': 504, 'serviceId': 5, 'optionName': 'Selulit Bakimi', 'price': 1650.0, 'active': true},
+    {
+      'optionId': 501,
+      'serviceId': 5,
+      'optionName': 'Karin Bolgesi',
+      'price': 1450.0,
+      'active': true
+    },
+    {
+      'optionId': 502,
+      'serviceId': 5,
+      'optionName': 'Bacak Bolgesi',
+      'price': 1550.0,
+      'active': true
+    },
+    {
+      'optionId': 503,
+      'serviceId': 5,
+      'optionName': 'Kol Bolgesi',
+      'price': 1250.0,
+      'active': true
+    },
+    {
+      'optionId': 504,
+      'serviceId': 5,
+      'optionName': 'Selulit Bakimi',
+      'price': 1650.0,
+      'active': true
+    },
   ],
 };
 
@@ -369,13 +489,15 @@ final employeesProvider =
 
 final customersProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>(
-  (ref) => _withListFallback(ref.watch(glowBackendServiceProvider).getCustomers),
+  (ref) =>
+      _withListFallback(ref.watch(glowBackendServiceProvider).getCustomers),
 );
 
 final employeesByServiceProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, serviceId) {
   return _withListFallback(
-    () => ref.watch(glowBackendServiceProvider).getEmployeesByService(serviceId),
+    () =>
+        ref.watch(glowBackendServiceProvider).getEmployeesByService(serviceId),
     _fallbackEmployees,
   );
 });
@@ -443,7 +565,9 @@ final activeWaitingListProvider =
 final customerWaitingListProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, customerId) {
   return _withListFallback(
-    () => ref.watch(glowBackendServiceProvider).getCustomerWaitingList(customerId),
+    () => ref
+        .watch(glowBackendServiceProvider)
+        .getCustomerWaitingList(customerId),
   );
 });
 

@@ -140,14 +140,15 @@ Future<void> _pumpBooking(
   final slotDate = '${today.year.toString().padLeft(4, '0')}-'
       '${today.month.toString().padLeft(2, '0')}-'
       '${today.day.toString().padLeft(2, '0')}';
-  final effectiveSlots = slots ?? [
-    {
-      'employeeId': 'EMP-1',
-      'employeeName': 'Elif Yılmaz',
-      'appointmentDate': slotDate,
-      'availableTimes': ['10:00:00'],
-    }
-  ];
+  final effectiveSlots = slots ??
+      [
+        {
+          'employeeId': 'EMP-1',
+          'employeeName': 'Elif Yılmaz',
+          'appointmentDate': slotDate,
+          'availableTimes': ['10:00:00'],
+        }
+      ];
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -178,7 +179,8 @@ Future<void> _pumpBooking(
             .overrideWith((ref, serviceId) async => const []),
         customerPackagesProvider
             .overrideWith((ref, customerId) async => const []),
-        availableSlotsProvider.overrideWith((ref, query) async => effectiveSlots),
+        availableSlotsProvider
+            .overrideWith((ref, query) async => effectiveSlots),
         customerUpcomingAppointmentsProvider.overrideWith(
           (ref, customerId) async => const [],
         ),

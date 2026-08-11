@@ -200,7 +200,8 @@ class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
           ],
         ),
         const SizedBox(height: 18),
-        Text('Paket avantajları', style: Theme.of(context).textTheme.titleMedium),
+        Text('Paket avantajları',
+            style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         Text(
           package.description ??

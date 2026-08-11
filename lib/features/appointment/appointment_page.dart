@@ -715,10 +715,8 @@ class _DateStep extends StatelessWidget {
             : initialDate;
     final dates =
         List.generate(14, (index) => today.add(Duration(days: index)));
-    final selectedLabels = selectedDates
-        .map(BookingDateUtils.formatDate)
-        .toList()
-      ..sort();
+    final selectedLabels =
+        selectedDates.map(BookingDateUtils.formatDate).toList()..sort();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -747,8 +745,8 @@ class _DateStep extends StatelessWidget {
               for (final date in dates) ...[
                 _DateChip(
                   date: date,
-                  selected:
-                      selectedLabels.contains(BookingDateUtils.formatDate(date)),
+                  selected: selectedLabels
+                      .contains(BookingDateUtils.formatDate(date)),
                   onTap: () => onSelected(date),
                 ),
                 const SizedBox(width: 8),

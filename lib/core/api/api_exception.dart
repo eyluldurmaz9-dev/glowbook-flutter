@@ -29,9 +29,7 @@ class ApiException implements Exception {
   factory ApiException.fromDio(DioException error) {
     final response = error.response;
     final data = response?.data;
-    final rawMessage = data is Map
-        ? data['message']?.toString()
-        : null;
+    final rawMessage = data is Map ? data['message']?.toString() : null;
     final detail = '${error.error ?? ''} ${error.message ?? ''}'.toLowerCase();
     final classification = _classify(error, detail);
     return ApiException(
