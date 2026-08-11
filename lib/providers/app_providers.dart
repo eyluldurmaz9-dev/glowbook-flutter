@@ -425,7 +425,8 @@ final allServicePackagesProvider =
     );
     packages.addAll(servicePackages.map((item) => {
           ...item,
-          if (item['packageImage'] == null && service['serviceImage'] != null)
+          if ((item['packageImage']?.toString().trim().isEmpty ?? true) &&
+              service['serviceImage'] != null)
             'packageImage': service['serviceImage'],
         }));
   }

@@ -105,6 +105,8 @@ class PackagesCatalogContent extends StatelessWidget {
                 sessions: package.totalSession == null
                     ? null
                     : '${package.totalSession} seans',
+                image: package.image,
+                semanticLabel: '${package.name} görseli',
                 onTap: package.id == null || package.serviceId == null
                     ? null
                     : () => AppNavigation.go(

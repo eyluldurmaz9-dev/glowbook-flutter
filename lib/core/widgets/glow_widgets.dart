@@ -1246,6 +1246,8 @@ class GlowPackageCard extends StatelessWidget {
     required this.description,
     this.price,
     this.sessions,
+    this.image,
+    this.semanticLabel,
     this.premium = false,
     this.onTap,
   });
@@ -1254,6 +1256,8 @@ class GlowPackageCard extends StatelessWidget {
   final String description;
   final String? price;
   final String? sessions;
+  final String? image;
+  final String? semanticLabel;
   final bool premium;
   final VoidCallback? onTap;
 
@@ -1265,6 +1269,17 @@ class GlowPackageCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (image != null) ...[
+            GlowCatalogImage(
+              semanticLabel: semanticLabel ?? title,
+              image: image,
+              icon: Icons.inventory_2_outlined,
+              width: double.infinity,
+              height: 150,
+              radius: 16,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           Row(
             children: [
               GlowMark(

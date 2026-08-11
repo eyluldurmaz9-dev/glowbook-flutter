@@ -238,6 +238,8 @@ class _PackageList extends StatelessWidget {
           GlowPackageCard(
             title: package.name,
             description: package.description ?? 'Ayrıntılar için dokun.',
+            image: package.image,
+            semanticLabel: '${package.name} görseli',
             price: package.priceText,
             sessions: package.totalSession == null
                 ? null

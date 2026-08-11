@@ -18,7 +18,10 @@ class CatalogService {
       id: _intValue(json['serviceId']),
       name: _cleanText(json['serviceName']) ?? 'Hizmet',
       description: _cleanText(json['description']),
-      image: _cleanText(json['serviceImage']),
+      image: catalogImageForService(
+        _cleanText(json['serviceName']),
+        _cleanText(json['serviceImage']),
+      ),
       active: _boolValue(json['active']),
     );
   }
@@ -92,7 +95,10 @@ class CatalogPackage {
       totalSession: _intValue(json['totalSession']),
       priceText: _priceText(json['price']),
       validityDays: _intValue(json['validityDays']),
-      image: _cleanText(json['packageImage']),
+      image: catalogImageForService(
+        _cleanText(json['serviceName']),
+        _cleanText(json['packageImage']),
+      ),
       active: _boolValue(json['active']),
     );
   }
@@ -141,4 +147,44 @@ bool? _boolValue(Object? value) {
   if (text == 'true') return true;
   if (text == 'false') return false;
   return null;
+}
+
+String? catalogImageForService(String? serviceName, String? image) {
+  final cleanedImage = _cleanText(image);
+  if (cleanedImage != null &&
+      !cleanedImage.startsWith('https://images.unsplash.com/')) {
+    return cleanedImage;
+  }
+
+  final normalized = _normalizeCatalogText(serviceName);
+  if (normalized.contains('cilt') || normalized.contains('hydrafacial')) {
+    return 'assets/images/glowbook-hydrafacial.jpg';
+  }
+  if (normalized.contains('lazer') || normalized.contains('epilasyon')) {
+    return 'assets/images/glowbook-laser.jpg';
+  }
+  if (normalized.contains('masaj') || normalized.contains('spa')) {
+    return 'assets/images/glowbook-spa.jpg';
+  }
+  if (normalized.contains('kas') || normalized.contains('kirpik')) {
+    return 'assets/images/glowbook-lashes.jpg';
+  }
+  if (normalized.contains('incelme') ||
+      normalized.contains('sikilasma') ||
+      normalized.contains('selulit')) {
+    return 'assets/images/glowbook-body-contouring.jpg';
+  }
+  return cleanedImage;
+}
+
+String _normalizeCatalogText(String? value) {
+  return (value ?? '')
+      .trim()
+      .toLowerCase()
+      .replaceAll('ı', 'i')
+      .replaceAll('ş', 's')
+      .replaceAll('ğ', 'g')
+      .replaceAll('ü', 'u')
+      .replaceAll('ö', 'o')
+      .replaceAll('ç', 'c');
 }
