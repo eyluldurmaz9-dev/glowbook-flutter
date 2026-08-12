@@ -8,6 +8,7 @@ import '../../core/routes/app_routes.dart';
 import '../../core/widgets/glow_widgets.dart';
 import '../../providers/app_providers.dart';
 import '../appointment/booking_models.dart';
+import '../catalog/catalog_models.dart';
 import '../employee/employee_dashboard_models.dart';
 
 enum _AdminSection {
@@ -636,6 +637,15 @@ class _ServiceAdminCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          GlowCatalogImage(
+            semanticLabel:
+                '${item['serviceName']?.toString() ?? 'Hizmet'} görseli',
+            image: CatalogService.fromJson(item).image,
+            width: double.infinity,
+            height: 140,
+            radius: 16,
+          ),
+          const SizedBox(height: AppSpacing.md),
           _RowHeader(
             title: item['serviceName']?.toString() ?? 'Hizmet',
             subtitle: item['description']?.toString(),

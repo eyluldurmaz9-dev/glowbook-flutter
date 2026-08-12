@@ -1,88 +1,76 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glowbook_flutter/features/catalog/catalog_models.dart';
+import 'package:glowbook_flutter/features/catalog/service_image_resolver.dart';
 
 void main() {
   test('Service API modeli güvenli UI modeline eşlenir', () {
-    final services = mapCatalogServices([
-      {
-        'serviceId': '12',
-        'serviceName': ' Hydrafacial ',
-        'description': '',
-        'serviceImage': 'https://cdn.example.com/service.jpg',
-        'active': 'true',
-      },
-    ]);
+    final service = CatalogService.fromJson({
+      'serviceId': '12',
+      'serviceName': ' Hydrafacial ',
+      'description': '',
+      'serviceImage': 'https://cdn.example.com/unapproved.jpg',
+      'active': 'true',
+    });
 
-    expect(services.single.id, 12);
-    expect(services.single.name, 'Hydrafacial');
-    expect(services.single.description, isNull);
-    expect(services.single.image, 'https://cdn.example.com/service.jpg');
-    expect(services.single.active, isTrue);
+    expect(service.id, 12);
+    expect(service.name, 'Hydrafacial');
+    expect(service.description, isNull);
+    expect(service.image, GlowBookAssets.hydrafacial);
+    expect(service.active, isTrue);
   });
 
-  test('Legacy servis görselleri doğru yerel kategori görseline eşlenir', () {
-    final services = mapCatalogServices([
-      {
-        'serviceId': 2,
-        'serviceName': 'Lazer Epilasyon',
-        'serviceImage': 'https://images.unsplash.com/photo-legacy',
-      },
-      {'serviceId': 3, 'serviceName': 'Masaj ve Spa'},
-      {'serviceId': 5, 'serviceName': 'Bölgesel İncelme'},
-    ]);
+  test('Her bilinen servis onaylı ve deterministik bir asset döndürür', () {
+    for (final service in ServiceImageResolver.knownServices) {
+      final first = ServiceImageResolver.resolve(service);
+      final second = ServiceImageResolver.resolve(service);
+      expect(first.asset, second.asset, reason: service);
+      expect(GlowBookAssets.approved, contains(first.asset), reason: service);
+    }
+  });
 
-    expect(services[0].image, 'assets/images/glowbook-laser.jpg');
-    expect(services[1].image, 'assets/images/glowbook-spa.jpg');
+  test('İlgili kategoriler birbirine karıştırılmaz', () {
     expect(
-      services[2].image,
-      'assets/images/glowbook-body-contouring.jpg',
+      ServiceImageResolver.imageFor('Cilt Bakımı'),
+      GlowBookAssets.hydrafacial,
+    );
+    expect(
+      ServiceImageResolver.imageFor('Kaş Alımı ve Kirpik Lifting'),
+      GlowBookAssets.lashes,
+    );
+    expect(
+      ServiceImageResolver.imageFor('Kalıcı Oje ve Manikür'),
+      GlowBookAssets.nails,
     );
   });
 
-  test('Özel servis görseli kategori varsayılanından önce gelir', () {
-    final service = CatalogService.fromJson({
-      'serviceName': 'Masaj ve Spa',
-      'serviceImage': 'https://cdn.example.com/custom-spa.jpg',
-    });
-
-    expect(service.image, 'https://cdn.example.com/custom-spa.jpg');
+  test('Onaylı kategorisi olmayan servis nötr salon fallback kullanır', () {
+    for (final service in const [
+      'Lazer Epilasyon',
+      'Masaj ve Spa',
+      'Bölgesel İncelme',
+      'Pedikür',
+      'Saç Kesimi',
+      'Makyaj',
+    ]) {
+      final resolution = ServiceImageResolver.resolve(service);
+      expect(resolution.asset, GlowBookAssets.hero, reason: service);
+      expect(resolution.neutralFallback, isTrue, reason: service);
+    }
   });
 
-  test('Package API modeli fiyatı değiştirmeden gösterir', () {
-    final packages = mapCatalogPackages([
-      {
-        'packageId': 4,
-        'serviceId': 2,
-        'serviceName': 'Cilt Bakımı',
-        'packageName': '6 Seans',
-        'totalSession': 6,
-        'price': 1200.5,
-      },
-    ]);
-
-    expect(packages.single.priceText, '1200.5');
-    expect(packages.single.totalSession, 6);
-  });
-
-  test('Görselsiz paket servis kategorisinin görselini devralır', () {
+  test('Paket API modeli servis görselini merkezi resolverdan alır', () {
     final package = CatalogPackage.fromJson({
       'packageId': 4,
-      'serviceId': 3,
-      'serviceName': 'Masaj ve Spa',
-      'packageName': 'Spa Paketi',
-      'packageImage': ' ',
+      'serviceId': 2,
+      'serviceName': 'Cilt Bakımı',
+      'packageName': '6 Seans',
+      'packageImage': 'https://cdn.example.com/unapproved.jpg',
+      'totalSession': 6,
+      'price': 1200.5,
     });
 
-    expect(package.image, 'assets/images/glowbook-spa.jpg');
-  });
-
-  test('Legacy paket görseli servis kategorisiyle düzeltilir', () {
-    final package = CatalogPackage.fromJson({
-      'serviceName': 'Kaş ve Kirpik',
-      'packageName': 'Kirpik Paketi',
-      'packageImage': 'https://images.unsplash.com/photo-legacy-package',
-    });
-
-    expect(package.image, 'assets/images/glowbook-lashes.jpg');
+    expect(package.priceText, '1200.5');
+    expect(package.totalSession, 6);
+    expect(package.image, GlowBookAssets.hydrafacial);
   });
 }

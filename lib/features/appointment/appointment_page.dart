@@ -568,6 +568,7 @@ class _ServicePicker extends StatelessWidget {
             title: service.name,
             subtitle: service.description ?? 'Ayrıntılar için dokun.',
             icon: Icons.spa_outlined,
+            image: service.image,
             selected: selected?.id == service.id,
             onTap: service.id == null ? null : () => onSelected(service),
           ),
@@ -1117,6 +1118,7 @@ class _SelectableTile extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.selected,
+    this.image,
     this.onTap,
   });
 
@@ -1124,6 +1126,7 @@ class _SelectableTile extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final bool selected;
+  final String? image;
   final VoidCallback? onTap;
 
   @override
@@ -1146,7 +1149,17 @@ class _SelectableTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              GlowMark(icon: icon, size: 40),
+              if (image == null)
+                GlowMark(icon: icon, size: 40)
+              else
+                GlowCatalogImage(
+                  semanticLabel: '$title görseli',
+                  image: image,
+                  icon: icon,
+                  width: 48,
+                  height: 48,
+                  radius: 13,
+                ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
