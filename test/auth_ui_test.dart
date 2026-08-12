@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:glowbook_flutter/core/routes/app_router.dart';
+import 'package:glowbook_flutter/core/api/api_exception.dart';
 import 'package:glowbook_flutter/core/services/glow_backend_service.dart';
 import 'package:glowbook_flutter/core/theme/app_theme.dart';
 import 'package:glowbook_flutter/features/auth/login_page.dart';
@@ -59,6 +60,46 @@ void main() {
 
     expect(find.text('Genel Bakış'), findsOneWidget);
   });
+
+  testWidgets('Personel girişi personel rolünü backend isteğine gönderir',
+      (tester) async {
+    final backend = _FakeAuthBackend(
+      loginError: const ApiException('Test isteği kaydedildi.'),
+    );
+    await tester.pumpWidget(_testAppWithBackend(
+      const LoginPage(initialRole: 'EMPLOYEE'),
+      backend,
+    ));
+
+    await tester.enterText(
+        find.byType(TextFormField).at(0), 'employee@glowbook.test');
+    await tester.enterText(find.byType(TextFormField).at(1), 'test-password');
+    await tester.ensureVisible(find.text('Giriş Yap'));
+    await tester.tap(find.text('Giriş Yap'));
+    await tester.pump();
+
+    expect(backend.lastRole, 'EMPLOYEE');
+  });
+
+  testWidgets('Yanlış rol mesajı kullanıcıya Türkçe gösterilir',
+      (tester) async {
+    final backend = _FakeAuthBackend(
+      loginError: const ApiException('Bu hesap yönetici hesabı değil.'),
+    );
+    await tester.pumpWidget(_testAppWithBackend(
+      const LoginPage(initialRole: 'ADMIN'),
+      backend,
+    ));
+
+    await tester.enterText(
+        find.byType(TextFormField).at(0), 'employee@glowbook.test');
+    await tester.enterText(find.byType(TextFormField).at(1), 'test-password');
+    await tester.ensureVisible(find.text('Giriş Yap'));
+    await tester.tap(find.text('Giriş Yap'));
+    await tester.pump();
+
+    expect(find.text('Bu hesap yönetici hesabı değil.'), findsOneWidget);
+  });
 }
 
 Widget _testApp(Widget child) {
@@ -76,11 +117,24 @@ Widget _testApp(Widget child) {
   );
 }
 
+Widget _testAppWithBackend(Widget child, _FakeAuthBackend backend) {
+  return ProviderScope(
+    overrides: [
+      authControllerProvider.overrideWith(
+        (ref) => _ReadyAuthController(backend),
+      ),
+    ],
+    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
+  );
+}
+
 class _FakeAuthBackend implements AuthBackend {
-  _FakeAuthBackend({this.initialSession, this.loginSession});
+  _FakeAuthBackend({this.initialSession, this.loginSession, this.loginError});
 
   final AuthSession? initialSession;
   final AuthSession? loginSession;
+  final Object? loginError;
+  String? lastRole;
 
   @override
   Future<AuthSession?> currentSession() async => initialSession;
@@ -91,6 +145,8 @@ class _FakeAuthBackend implements AuthBackend {
     required String password,
     String role = 'CUSTOMER',
   }) async {
+    lastRole = role;
+    if (loginError != null) throw loginError!;
     return loginSession ?? AuthSession(token: 'token', role: role);
   }
 

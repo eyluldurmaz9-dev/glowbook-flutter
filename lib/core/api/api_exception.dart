@@ -119,6 +119,10 @@ String safeApiMessage({
   final lower = rawMessage?.toLowerCase() ?? '';
   switch (statusCode) {
     case 400:
+      if (lower == 'bu hesap personel hesabı değil.' ||
+          lower == 'bu hesap yönetici hesabı değil.') {
+        return rawMessage!.trim();
+      }
       return 'Gönderilen bilgileri kontrol edip tekrar dene.';
     case 401:
       return 'Oturum süren dolmuş olabilir. Lütfen tekrar giriş yap.';

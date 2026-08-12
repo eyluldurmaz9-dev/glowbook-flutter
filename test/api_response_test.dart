@@ -34,5 +34,12 @@ void main() {
           statusCode: 400, rawMessage: 'firstName: must not be blank'),
       'Gönderilen bilgileri kontrol edip tekrar dene.',
     );
+    expect(
+      safeApiMessage(
+        statusCode: 400,
+        rawMessage: 'Bu hesap yönetici hesabı değil.',
+      ),
+      'Bu hesap yönetici hesabı değil.',
+    );
   });
 }
