@@ -33,6 +33,17 @@ void main() {
     addTearDown(() => _resetViewport(tester));
   });
 
+  testWidgets('Admin çıkış düğmesi mobil görünümde erişilebilirdir',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    await _pumpAdmin(tester, backend: _FakeAdminBackend());
+
+    expect(find.byKey(const Key('admin_mobile_logout')), findsOneWidget);
+    expect(find.byTooltip('Oturumu Kapat'), findsOneWidget);
+    addTearDown(() => _resetViewport(tester));
+  });
+
   testWidgets('Hizmet CRUD oluşturma ve silme onay akışı çalışır',
       (tester) async {
     _setWideViewport(tester);

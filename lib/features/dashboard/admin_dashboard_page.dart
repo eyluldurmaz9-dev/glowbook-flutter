@@ -86,6 +86,12 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
           : GlowAppBar(
               title: 'Yönetim',
               actions: [
+                IconButton(
+                  key: const Key('admin_mobile_logout'),
+                  tooltip: 'Oturumu Kapat',
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout),
+                ),
                 PopupMenuButton<_AdminSection>(
                   tooltip: 'Bölüm seç',
                   onSelected: (section) => setState(() => _section = section),
