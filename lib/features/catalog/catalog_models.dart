@@ -1,4 +1,5 @@
 import 'service_image_resolver.dart';
+import 'package_image_resolver.dart';
 
 class CatalogService {
   const CatalogService({
@@ -94,7 +95,11 @@ class CatalogPackage {
       totalSession: _intValue(json['totalSession']),
       priceText: _priceText(json['price']),
       validityDays: _intValue(json['validityDays']),
-      image: ServiceImageResolver.imageFor(_cleanText(json['serviceName'])),
+      image: PackageImageResolver.imageFor(
+        packageId: _intValue(json['packageId']),
+        packageName: _cleanText(json['packageName']),
+        serviceName: _cleanText(json['serviceName']),
+      ),
       active: _boolValue(json['active']),
     );
   }

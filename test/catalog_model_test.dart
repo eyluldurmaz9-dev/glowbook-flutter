@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glowbook_flutter/features/catalog/catalog_models.dart';
 import 'package:glowbook_flutter/features/catalog/service_image_resolver.dart';
+import 'package:glowbook_flutter/features/catalog/package_image_resolver.dart';
 
 void main() {
   test('Mantıksal olarak aynı hizmet adları katalogda tekilleştirilir', () {
@@ -66,12 +67,12 @@ void main() {
     }
   });
 
-  test('Paket API modeli servis görselini merkezi resolverdan alır', () {
+  test('Paket API modeli paket görselini merkezi resolverdan alır', () {
     final package = CatalogPackage.fromJson({
       'packageId': 4,
       'serviceId': 2,
       'serviceName': 'Cilt Bakımı',
-      'packageName': '6 Seans',
+      'packageName': 'Hydrafacial 6 Seans',
       'packageImage': 'https://cdn.example.com/unapproved.jpg',
       'totalSession': 6,
       'price': 1200.5,
@@ -79,6 +80,28 @@ void main() {
 
     expect(package.priceText, '1200.5');
     expect(package.totalSession, 6);
-    expect(package.image, GlowBookAssets.hydrafacial);
+    expect(package.image, PackageImageResolver.skinHydrafacial);
+  });
+
+  test('Lazer ve cilt paketleri birbirinden farklı görseller kullanır', () {
+    final names = <String, String>{
+      '3 Bölge Lazer': PackageImageResolver.laserThreeRegion,
+      '5 Bölge Lazer': PackageImageResolver.laserFiveRegion,
+      'Tüm Vücut Lazer': PackageImageResolver.laserFullBody,
+      'Hydrafacial Paket': PackageImageResolver.skinHydrafacial,
+      'Anti Aging Paket': PackageImageResolver.skinAntiAging,
+      'Medikal Cilt Paketi': PackageImageResolver.skinMedical,
+    };
+    final resolved = names.entries
+        .map((entry) => PackageImageResolver.imageFor(
+              packageName: entry.key,
+              serviceName: entry.key.contains('Lazer')
+                  ? 'Lazer Epilasyon'
+                  : 'Cilt Bakımı',
+            ))
+        .toList();
+
+    expect(resolved, names.values.toList());
+    expect(resolved.toSet(), hasLength(resolved.length));
   });
 }
