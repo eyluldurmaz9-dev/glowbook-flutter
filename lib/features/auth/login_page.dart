@@ -198,13 +198,12 @@ class _LoginCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GlowMark(
-                  icon: role == 'EMPLOYEE'
-                      ? Icons.badge_outlined
-                      : role == 'ADMIN'
-                          ? Icons.admin_panel_settings_outlined
-                          : Icons.auto_awesome,
-                  size: 50,
+                const Image(
+                  image: AssetImage(
+                    'assets/images/branding/glowbook-official-logo.png',
+                  ),
+                  width: 82,
+                  height: 82,
                 ),
                 const SizedBox(height: 19),
                 GlowEyebrow(_eyebrowForRole(role)),

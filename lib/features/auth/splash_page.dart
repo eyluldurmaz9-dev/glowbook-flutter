@@ -66,7 +66,13 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            GlowMark(icon: Icons.auto_awesome, size: 82),
+            Image(
+              image: AssetImage(
+                'assets/images/branding/glowbook-official-logo.png',
+              ),
+              width: 150,
+              height: 150,
+            ),
             SizedBox(height: 24),
             Text(
               'GlowBook',

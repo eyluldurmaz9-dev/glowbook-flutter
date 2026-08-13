@@ -920,7 +920,16 @@ class GlowBrand extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const GlowMark(icon: Icons.auto_awesome),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(compact ? 10 : 12),
+            child: Image.asset(
+              'assets/images/branding/glowbook-official-logo.png',
+              width: compact ? 34 : 44,
+              height: compact ? 34 : 44,
+              fit: BoxFit.cover,
+              semanticLabel: 'GlowBook resmi logosu',
+            ),
+          ),
           if (!compact) ...[
             const SizedBox(width: 10),
             Text(
