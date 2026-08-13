@@ -22,6 +22,12 @@ void main() {
     expect(find.text('Kalıcı Oje'), findsOneWidget);
   });
 
+  testWidgets('Paketlerim müşteri panelinde korunur', (tester) async {
+    await _pumpDashboard(tester, backend: _FakeCustomerBackend());
+
+    expect(find.text('Paketlerim'), findsWidgets);
+    expect(find.widgetWithText(Tab, 'Paketlerim'), findsOneWidget);
+  });
   testWidgets('Randevu iptal başarı durumu provider yeniler', (tester) async {
     final backend = _FakeCustomerBackend();
     await _pumpDashboard(tester, backend: backend);

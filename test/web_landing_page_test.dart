@@ -18,6 +18,7 @@ void main() {
     expect(find.text('Randevu Al'), findsWidgets);
     expect(find.text('İletişim'), findsWidgets);
     expect(find.text('Giriş Yap'), findsWidgets);
+    expect(find.byKey(const Key('web_nav_Paketler')), findsNothing);
     expect(find.text('Gerçek Cilt Bakımı'), findsOneWidget);
     expect(find.text('Hydrafacial Premium'), findsOneWidget);
     expect(find.textContaining('6 seans'), findsOneWidget);
@@ -59,6 +60,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Dar public web menüsünde bağımsız Paketler öğesi yoktur',
+      (tester) async {
+    await _pumpLanding(tester, const Size(390, 844));
+
+    await tester.tap(find.byKey(const Key('web_mobile_menu')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('web_mobile_nav_Paketler')), findsNothing);
+    expect(find.byKey(const Key('web_mobile_nav_Hizmetler')), findsOneWidget);
+    expect(find.byKey(const Key('web_mobile_nav_Randevu Al')), findsOneWidget);
+  });
   testWidgets('Giriş Yap login rotasını açar', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1440, 900);

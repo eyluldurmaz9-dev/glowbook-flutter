@@ -51,10 +51,10 @@ class _WebLandingPageState extends ConsumerState<WebLandingPage> {
             _HeaderLink('Ana Sayfa', _home),
             _HeaderLink('Hakkımızda', _about),
             _HeaderLink('Hizmetler', _services),
-            _HeaderLink('Paketler', _packages),
             _HeaderLink('Randevu Al', _booking),
             _HeaderLink('İletişim', _contact),
           ],
+          packagesKey: _packages,
           onNavigate: _scrollTo,
         ),
         Expanded(
@@ -92,8 +92,13 @@ class _WebLandingPageState extends ConsumerState<WebLandingPage> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.links, required this.onNavigate});
+  const _Header({
+    required this.links,
+    required this.packagesKey,
+    required this.onNavigate,
+  });
   final List<_HeaderLink> links;
+  final GlobalKey packagesKey;
   final ValueChanged<GlobalKey> onNavigate;
 
   @override
@@ -125,11 +130,11 @@ class _Header extends StatelessWidget {
                         key: const Key('web_services_menu'),
                         tooltip: 'Hizmetler menüsü',
                         onSelected: (value) {
-                          final targetLabel =
-                              value == 'packages' ? 'Paketler' : 'Hizmetler';
-                          final target = links
-                              .firstWhere((item) => item.label == targetLabel);
-                          onNavigate(target.key);
+                          if (value == 'packages') {
+                            onNavigate(packagesKey);
+                            return;
+                          }
+                          onNavigate(link.key);
                         },
                         itemBuilder: (_) => const [
                           PopupMenuItem(
@@ -160,7 +165,11 @@ class _Header extends StatelessWidget {
                     onSelected: (link) => onNavigate(link.key),
                     itemBuilder: (_) => [
                       for (final link in links)
-                        PopupMenuItem(value: link, child: Text(link.label)),
+                        PopupMenuItem(
+                          key: Key('web_mobile_nav_${link.label}'),
+                          value: link,
+                          child: Text(link.label),
+                        ),
                     ],
                   ),
                 const SizedBox(width: 12),
