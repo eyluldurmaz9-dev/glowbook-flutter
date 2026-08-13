@@ -863,22 +863,31 @@ class _EmployeesSection extends ConsumerWidget {
                       DataRow(
                         cells: [
                           DataCell(
-                            Wrap(
-                              spacing: AppSpacing.xs,
-                              children: [
-                                TextButton(
-                                  onPressed: busy ? null : () => onEdit(item),
-                                  child: const Text('Düzenle'),
-                                ),
-                                TextButton(
-                                  key: ValueKey(
-                                    'admin_employee_delete_${item['employeeId']}',
+                            SizedBox(
+                              width: 240,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: busy ? null : () => onEdit(item),
+                                    style: _employeeActionButtonStyle(),
+                                    icon: const Icon(Icons.edit_outlined,
+                                        size: 18),
+                                    label: const Text('Düzenle'),
                                   ),
-                                  onPressed:
-                                      busy ? null : () => onDeactivate(item),
-                                  child: const Text('Sil'),
-                                ),
-                              ],
+                                  TextButton.icon(
+                                    key: ValueKey(
+                                      'admin_employee_delete_${item['employeeId']}',
+                                    ),
+                                    onPressed:
+                                        busy ? null : () => onDeactivate(item),
+                                    style: _employeeActionButtonStyle(),
+                                    icon: const Icon(Icons.delete_outline,
+                                        size: 18),
+                                    label: const Text('Sil'),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           DataCell(Column(
@@ -1609,9 +1618,9 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
       TextEditingController(text: widget.item?['email']?.toString());
   final _password = TextEditingController();
   late bool _active = widget.item?['active'] != false;
-  late final Set<int> _selectedOptionIds =
+  late final Set<int> _selectedServiceIds =
       ((widget.item?['assignedServices'] as List?) ?? const [])
-          .map((item) => _intValue((item as Map?)?['optionId']))
+          .map((item) => _intValue((item as Map?)?['serviceId']))
           .whereType<int>()
           .toSet();
 
@@ -1664,9 +1673,9 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
             onChanged: (value) => setState(() => _active = value),
             title: const Text('Aktif')),
         _EmployeeCompetenciesField(
-          selectedOptionIds: _selectedOptionIds,
+          selectedServiceIds: _selectedServiceIds,
           onChanged: (ids) => setState(() {
-            _selectedOptionIds
+            _selectedServiceIds
               ..clear()
               ..addAll(ids);
           }),
@@ -1680,7 +1689,7 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
         'email': _email.text.trim(),
         'password': _password.text.trim(),
         'active': _active,
-        'optionIds': _selectedOptionIds.toList()..sort(),
+        'serviceIds': _selectedServiceIds.toList()..sort(),
       },
     );
   }
@@ -1688,11 +1697,11 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
 
 class _EmployeeCompetenciesField extends ConsumerWidget {
   const _EmployeeCompetenciesField({
-    required this.selectedOptionIds,
+    required this.selectedServiceIds,
     required this.onChanged,
   });
 
-  final Set<int> selectedOptionIds;
+  final Set<int> selectedServiceIds;
   final ValueChanged<Set<int>> onChanged;
 
   @override
@@ -1711,70 +1720,34 @@ class _EmployeeCompetenciesField extends ConsumerWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 6),
-              const Text('Personelin verebildiği alt hizmetleri seçin.'),
+              const Text('Personelin verebildiği ana hizmetleri seçin.'),
               const SizedBox(height: 10),
-              for (final service in services)
-                if (service['active'] != false && service['serviceId'] is int)
-                  _CompetencyServiceGroup(
-                    service: service,
-                    options: ref.watch(
-                      serviceOptionsProvider(service['serviceId'] as int),
-                    ),
-                    selectedOptionIds: selectedOptionIds,
-                    onChanged: onChanged,
-                  ),
+              for (final group in _deduplicatedActiveServices(services))
+                CheckboxListTile(
+                  key: ValueKey('employee_service_${group.name}'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(group.name),
+                  value: group.ids.every(selectedServiceIds.contains),
+                  onChanged: (selected) {
+                    final next = {...selectedServiceIds};
+                    selected == true
+                        ? next.addAll(group.ids)
+                        : next.removeAll(group.ids);
+                    onChanged(next);
+                  },
+                ),
             ],
           ),
         );
   }
 }
 
-class _CompetencyServiceGroup extends StatelessWidget {
-  const _CompetencyServiceGroup({
-    required this.service,
-    required this.options,
-    required this.selectedOptionIds,
-    required this.onChanged,
-  });
+class _ServiceSelectionGroup {
+  const _ServiceSelectionGroup(this.name, this.ids);
 
-  final Map<String, dynamic> service;
-  final AsyncValue<List<Map<String, dynamic>>> options;
-  final Set<int> selectedOptionIds;
-  final ValueChanged<Set<int>> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return ExpansionTile(
-      tilePadding: EdgeInsets.zero,
-      title: Text(service['serviceName']?.toString() ?? 'Hizmet'),
-      children: [
-        options.when(
-          loading: () => const LinearProgressIndicator(),
-          error: (error, _) => Text(_safeAdminError(error)),
-          data: (items) => Column(
-            children: [
-              for (final option in items)
-                if (option['active'] != false && option['optionId'] is int)
-                  CheckboxListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title:
-                        Text(option['optionName']?.toString() ?? 'Alt hizmet'),
-                    value: selectedOptionIds.contains(option['optionId']),
-                    onChanged: (selected) {
-                      final next = {...selectedOptionIds};
-                      selected == true
-                          ? next.add(option['optionId'] as int)
-                          : next.remove(option['optionId']);
-                      onChanged(next);
-                    },
-                  ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  final String name;
+  final Set<int> ids;
 }
 
 class _WorkingHourFormDialog extends StatefulWidget {
@@ -1998,12 +1971,24 @@ String _employeeName(Map<String, dynamic> item) {
   return text.isEmpty ? item['employeeId']?.toString() ?? 'Personel' : text;
 }
 
+ButtonStyle _employeeActionButtonStyle() => TextButton.styleFrom(
+      visualDensity: VisualDensity.compact,
+      minimumSize: Size.zero,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+
 String _employeeCompetencySummary(Map<String, dynamic> item) {
   final assignments = (item['assignedServices'] as List?) ?? const [];
   final names = assignments
-      .map((value) => (value as Map?)?['optionName']?.toString())
+      .map((value) => (value as Map?)?['serviceName']?.toString())
       .whereType<String>()
       .where((name) => name.trim().isNotEmpty)
+      .fold<Map<String, String>>({}, (result, name) {
+        result.putIfAbsent(_serviceNameKey(name), () => name.trim());
+        return result;
+      })
+      .values
       .toList();
   if (names.isEmpty) return '0 yetkinlik';
   final preview = names.take(2).join(', ');
@@ -2011,6 +1996,38 @@ String _employeeCompetencySummary(Map<String, dynamic> item) {
       ? '${names.length} • $preview…'
       : '${names.length} • $preview';
 }
+
+List<_ServiceSelectionGroup> _deduplicatedActiveServices(
+  List<Map<String, dynamic>> services,
+) {
+  final grouped = <String, _ServiceSelectionGroup>{};
+  for (final service in services) {
+    if (service['active'] == false) continue;
+    final id = _intValue(service['serviceId']);
+    final name = service['serviceName']?.toString().trim() ?? '';
+    if (id == null || name.isEmpty) continue;
+    final key = _serviceNameKey(name);
+    final current = grouped[key];
+    grouped[key] = _ServiceSelectionGroup(
+      current?.name ?? name,
+      {...?current?.ids, id},
+    );
+  }
+  final result = grouped.values.toList();
+  result.sort((left, right) => left.name.compareTo(right.name));
+  return result;
+}
+
+String _serviceNameKey(String value) => value
+    .trim()
+    .toLowerCase()
+    .replaceAll('ı', 'i')
+    .replaceAll('ş', 's')
+    .replaceAll('ğ', 'g')
+    .replaceAll('ü', 'u')
+    .replaceAll('ö', 'o')
+    .replaceAll('ç', 'c')
+    .replaceAll(RegExp(r'\s+'), ' ');
 
 int? _intValue(Object? value) {
   if (value is int) return value;

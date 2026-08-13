@@ -53,7 +53,7 @@ void main() {
     expect(backend.createServiceCount, 1);
     expect(find.text('Hizmet kaydedildi'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('admin_service_delete')));
+    await tester.tap(find.byKey(const Key('admin_service_delete')).first);
     await tester.pumpAndSettle();
     expect(find.text('Hizmeti pasifleştir'), findsOneWidget);
     await _tapText(tester, 'Onayla', last: true);
@@ -97,7 +97,7 @@ void main() {
     addTearDown(() => _resetViewport(tester));
   });
 
-  testWidgets('Personel oluşturma seçilen alt hizmet yetkinliğini kaydeder',
+  testWidgets('Personel oluşturma ana hizmeti tek kez gösterip kaydeder',
       (tester) async {
     _setWideViewport(tester);
     final backend = _FakeAdminBackend();
@@ -114,14 +114,13 @@ void main() {
         find.widgetWithText(TextFormField, 'Soyad'), 'Uzman');
     await tester.enterText(
         find.widgetWithText(TextFormField, 'Şifre'), 'safe-password');
-    await _tapText(tester, 'Hydrafacial');
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Standart'));
+    expect(find.text('Hydrafacial'), findsOneWidget);
+    await tester.tap(find.widgetWithText(CheckboxListTile, 'Hydrafacial'));
     await tester.pump();
     await _tapText(tester, 'Kaydet');
     await tester.pumpAndSettle();
 
-    expect(backend.createdEmployee?['optionIds'], [11]);
+    expect(backend.createdEmployee?['serviceIds'], [1, 2]);
     addTearDown(() => _resetViewport(tester));
   });
 
@@ -134,11 +133,8 @@ void main() {
     await tester.pumpAndSettle();
     await _tapText(tester, 'Düzenle');
     await tester.pumpAndSettle();
-    await _tapText(tester, 'Hydrafacial');
-    await tester.pumpAndSettle();
-
     final checkbox = tester.widget<CheckboxListTile>(
-      find.widgetWithText(CheckboxListTile, 'Standart'),
+      find.widgetWithText(CheckboxListTile, 'Hydrafacial'),
     );
     expect(checkbox.value, isTrue);
     addTearDown(() => _resetViewport(tester));
@@ -296,6 +292,12 @@ class _FakeAdminBackend extends GlowBackendService {
       'description': 'Cilt bakımı',
       'active': true,
     },
+    {
+      'serviceId': 2,
+      'serviceName': 'hydrafacial',
+      'description': 'Tekrarlanan katalog kaydı',
+      'active': true,
+    },
   ];
 
   final options = const [
@@ -337,8 +339,17 @@ class _FakeAdminBackend extends GlowBackendService {
           'employeeName': 'Elif Yılmaz',
           'serviceId': 1,
           'serviceName': 'Hydrafacial',
-          'optionId': 11,
-          'optionName': 'Standart',
+          'optionId': null,
+          'optionName': null,
+        },
+        {
+          'employeeServiceId': 2,
+          'employeeId': 'EMP-1',
+          'employeeName': 'Elif Yılmaz',
+          'serviceId': 2,
+          'serviceName': 'hydrafacial',
+          'optionId': null,
+          'optionName': null,
         },
       ],
     },
