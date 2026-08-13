@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/navigation/app_navigation.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/widgets/glow_widgets.dart';
+import '../web/web_landing_page.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) return const WebLandingPage();
     return Scaffold(
       body: SafeArea(
         child: GlowResponsivePage(
