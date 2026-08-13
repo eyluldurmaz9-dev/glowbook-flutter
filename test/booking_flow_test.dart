@@ -74,8 +74,10 @@ void main() {
     await _tapText(tester, 'Onayla', last: true);
     await tester.pump();
 
-    expect(find.text('Seçilen saat az önce doldu. Lütfen başka bir saat seç.'),
+    expect(find.text('Bu saat artık uygun değil. Lütfen başka bir saat seç.'),
         findsOneWidget);
+    expect(find.text('Saat'), findsOneWidget);
+    expect(find.textContaining('backend'), findsNothing);
   });
 
   testWidgets('Ağ hatası güvenli hata mesajı gösterir', (tester) async {
@@ -171,19 +173,21 @@ Future<void> _pumpBooking(
   required _FakeGlowBackendService backend,
   List<Map<String, dynamic>>? slots,
 }) async {
-  final today = DateTime.now();
-  final slotDate = '${today.year.toString().padLeft(4, '0')}-'
-      '${today.month.toString().padLeft(2, '0')}-'
-      '${today.day.toString().padLeft(2, '0')}';
-  final effectiveSlots = slots ??
-      [
-        {
-          'employeeId': 'EMP-1',
-          'employeeName': 'Elif Yılmaz',
-          'appointmentDate': slotDate,
-          'availableTimes': ['10:00:00'],
-        }
-      ];
+  final slotDay = DateTime.now().add(const Duration(days: 1));
+  final slotDate = '${slotDay.year.toString().padLeft(4, '0')}-'
+      '${slotDay.month.toString().padLeft(2, '0')}-'
+      '${slotDay.day.toString().padLeft(2, '0')}';
+  final effectiveSlots = (slots ??
+          [
+            {
+              'employeeId': 'EMP-1',
+              'employeeName': 'Elif Yılmaz',
+              'appointmentDate': slotDate,
+              'availableTimes': ['10:00:00'],
+            }
+          ])
+      .map((slot) => {'appointmentDate': slotDate, ...slot})
+      .toList();
   await tester.pumpWidget(
     ProviderScope(
       overrides: [

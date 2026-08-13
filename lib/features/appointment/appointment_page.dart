@@ -79,7 +79,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
                 children: [
                   GlowPageTop(
                     title: 'Randevu oluştur',
-                    subtitle: 'Hizmetini seç, uygun saati backend’den doğrula.',
+                    subtitle: 'Hizmetini seç, sana uygun saati kolayca planla.',
                     action: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -335,7 +335,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     final confirmed = await GlowDialog.showConfirmation(
       context,
       title: 'Randevuyu onayla',
-      message: 'Seçtiğin saat backend tarafından tekrar kontrol edilecek.',
+      message: 'Seçtiğin saatin uygunluğu son kez kontrol edilecek.',
       confirmLabel: 'Onayla',
     );
     if (confirmed != true) return;
@@ -398,10 +398,15 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
       setState(() {
         _result = BookingResult.appointment(response);
       });
-      GlowSnackBar.showSuccess(
-          context, 'Randevun backend tarafından oluşturuldu.');
+      GlowSnackBar.showSuccess(context, 'Randevun başarıyla oluşturuldu.');
     } catch (error) {
       if (!mounted) return;
+      if (isStaleSlotError(error)) {
+        setState(() {
+          _step = 3;
+          _time = null;
+        });
+      }
       GlowSnackBar.showError(
         context,
         bookingErrorMessage(error) ?? 'Randevu oluşturulamadı.',
@@ -909,7 +914,7 @@ class _TimeStep extends StatelessWidget {
             children: [
               const GlowEmptyState(
                 title: 'Uygun saat yok',
-                message: 'Bu tarih için backend uygun zaman döndürmedi.',
+                message: 'Bu tarih için uygun bir saat bulunamadı.',
                 icon: Icons.event_busy_outlined,
               ),
               const SizedBox(height: 12),
@@ -948,7 +953,10 @@ class _TimeStep extends StatelessWidget {
     final choices = <BookingTimeChoice>[];
     for (final slot in slots) {
       for (final time in slot.availableTimes) {
-        choices.add(BookingTimeChoice(date: slot.date, time: time, slot: slot));
+        if (BookingDateUtils.isFutureFullHourSlot(slot.date, time)) {
+          choices
+              .add(BookingTimeChoice(date: slot.date, time: time, slot: slot));
+        }
       }
     }
     choices.sort((a, b) {
@@ -1014,7 +1022,7 @@ class _EmployeeStep extends StatelessWidget {
         if (employees.isEmpty) {
           return const GlowEmptyState(
             title: 'Personel bulunamadı',
-            message: 'Seçilen saat için backend personel döndürmedi.',
+            message: 'Seçilen saat için uygun personel bulunamadı.',
           );
         }
         return Column(

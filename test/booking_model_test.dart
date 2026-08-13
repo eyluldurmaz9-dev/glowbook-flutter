@@ -14,6 +14,28 @@ void main() {
     expect(BookingDateUtils.normalizeTime('14:30'), '14:30');
   });
 
+  test('Bugünün geçmiş saatleri elenir, sonraki tam saat korunur', () {
+    final now = DateTime(2026, 8, 13, 13, 25);
+    final today = DateTime(2026, 8, 13);
+
+    expect(BookingDateUtils.isFutureFullHourSlot(today, '13:00', now: now),
+        isFalse);
+    expect(BookingDateUtils.isFutureFullHourSlot(today, '14:00', now: now),
+        isTrue);
+    expect(BookingDateUtils.isFutureFullHourSlot(today, '14:30', now: now),
+        isFalse);
+  });
+
+  test('Gelecek günün sabah tam saati görünür', () {
+    expect(
+        BookingDateUtils.isFutureFullHourSlot(
+          DateTime(2026, 8, 14),
+          '09:00',
+          now: DateTime(2026, 8, 13, 18),
+        ),
+        isTrue);
+  });
+
   test('Available slot response güvenli modele eşlenir', () {
     final slots = mapBookingSlots([
       {
@@ -48,7 +70,7 @@ void main() {
   test('Backend hata mesajı güvenli Türkçe metne dönüştürülür', () {
     expect(
       bookingErrorMessage(Exception('Selected slot is not available')),
-      'Seçilen saat az önce doldu. Lütfen başka bir saat seç.',
+      'Bu saat artık uygun değil. Lütfen başka bir saat seç.',
     );
     expect(
       bookingErrorMessage(Exception('Backend sunucusuna ulaşılamadı.')),

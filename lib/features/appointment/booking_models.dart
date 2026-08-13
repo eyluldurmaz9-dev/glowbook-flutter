@@ -170,6 +170,20 @@ class BookingDateUtils {
     return parts.length >= 2 && int.tryParse(parts[1]) == 0;
   }
 
+  static bool isFutureFullHourSlot(
+    DateTime date,
+    String time, {
+    DateTime? now,
+  }) {
+    if (!isFullHour(time)) return false;
+    final parts = time.split(':');
+    final hour = int.tryParse(parts.first);
+    if (hour == null || hour < 0 || hour > 23) return false;
+    final current = now ?? DateTime.now();
+    final start = DateTime(date.year, date.month, date.day, hour);
+    return start.isAfter(current);
+  }
+
   static String dayLabel(DateTime date) {
     const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
     return days[date.weekday - 1];
@@ -194,13 +208,26 @@ String? bookingErrorMessage(Object error) {
   }
   if (message.toLowerCase().contains('occupied') ||
       message.toLowerCase().contains('not available')) {
-    return 'Seçilen saat az önce doldu. Lütfen başka bir saat seç.';
+    return 'Bu saat artık uygun değil. Lütfen başka bir saat seç.';
+  }
+  if (message.contains('Geçmiş bir tarih') ||
+      message.toLowerCase().contains('past date')) {
+    return 'Geçmiş bir tarih için randevu oluşturamazsın.';
+  }
+  if (message.contains('geçmişte kaldı') ||
+      message.toLowerCase().contains('past time')) {
+    return 'Bu saat artık geçmişte kaldı. Lütfen başka bir saat seç.';
   }
   if (message.toLowerCase().contains('connection') ||
       message.toLowerCase().contains('ulaşılamadı')) {
     return 'Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.';
   }
   return message;
+}
+
+bool isStaleSlotError(Object error) {
+  final message = error.toString().toLowerCase();
+  return message.contains('occupied') || message.contains('not available');
 }
 
 String? _cleanText(Object? value) {
