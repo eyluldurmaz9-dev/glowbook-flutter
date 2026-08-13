@@ -109,8 +109,24 @@ class CatalogPackage {
 }
 
 List<CatalogService> mapCatalogServices(List<Map<String, dynamic>> items) {
-  return items.map(CatalogService.fromJson).toList(growable: false);
+  final unique = <String, CatalogService>{};
+  for (final item in items.map(CatalogService.fromJson)) {
+    unique.putIfAbsent(_canonicalCatalogName(item.name), () => item);
+  }
+  return unique.values.toList(growable: false);
 }
+
+String _canonicalCatalogName(String value) => value
+    .trim()
+    .toLowerCase()
+    .replaceAll('ı', 'i')
+    .replaceAll('ş', 's')
+    .replaceAll('ğ', 'g')
+    .replaceAll('ü', 'u')
+    .replaceAll('ö', 'o')
+    .replaceAll('ç', 'c')
+    .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+    .trim();
 
 List<CatalogOption> mapCatalogOptions(List<Map<String, dynamic>> items) {
   return items.map(CatalogOption.fromJson).toList(growable: false);

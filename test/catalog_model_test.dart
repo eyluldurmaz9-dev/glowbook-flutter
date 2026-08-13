@@ -3,6 +3,14 @@ import 'package:glowbook_flutter/features/catalog/catalog_models.dart';
 import 'package:glowbook_flutter/features/catalog/service_image_resolver.dart';
 
 void main() {
+  test('Mantıksal olarak aynı hizmet adları katalogda tekilleştirilir', () {
+    final services = mapCatalogServices([
+      {'serviceId': 1, 'serviceName': 'Bölgesel İncelme', 'active': true},
+      {'serviceId': 2, 'serviceName': 'bolgesel incelme', 'active': true},
+      {'serviceId': 3, 'serviceName': 'Kaş ve Kirpik', 'active': true},
+    ]);
+    expect(services, hasLength(2));
+  });
   test('Service API modeli güvenli UI modeline eşlenir', () {
     final service = CatalogService.fromJson({
       'serviceId': '12',
