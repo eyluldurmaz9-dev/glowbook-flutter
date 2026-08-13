@@ -77,7 +77,7 @@ class ServiceDetailPage extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               _Section(
-                title: 'Paket seçenekleri',
+                title: 'Bu hizmet için paketler',
                 child: packages.when(
                   loading: () => const GlowLoading(message: 'Paketler'),
                   error: (error, _) => GlowError(
@@ -86,7 +86,11 @@ class ServiceDetailPage extends ConsumerWidget {
                         ref.invalidate(servicePackagesProvider(serviceId)),
                   ),
                   data: (items) => _PackageList(
-                    packages: mapCatalogPackages(items),
+                    packages: mapCatalogPackages(items)
+                        .where((item) =>
+                            item.serviceId == null ||
+                            item.serviceId == serviceId)
+                        .toList(),
                   ),
                 ),
               ),
@@ -105,7 +109,8 @@ class ServiceDetailPage extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               GlowButton(
-                label: 'Randevu Oluştur',
+                key: const Key('service_detail_book'),
+                label: 'Randevu Al',
                 icon: Icons.calendar_today_outlined,
                 fullWidth: true,
                 onPressed: () =>
@@ -234,6 +239,22 @@ class _PackageList extends StatelessWidget {
     }
     return Column(
       children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            key: const Key('service_detail_packages'),
+            onPressed:
+                packages.first.id == null || packages.first.serviceId == null
+                    ? null
+                    : () => AppNavigation.go(
+                          context,
+                          '/packages/${packages.first.serviceId}/${packages.first.id}',
+                        ),
+            icon: const Icon(Icons.inventory_2_outlined),
+            label: const Text('Bu hizmet için paketleri gör'),
+          ),
+        ),
+        const SizedBox(height: 10),
         for (final package in packages) ...[
           GlowPackageCard(
             title: package.name,

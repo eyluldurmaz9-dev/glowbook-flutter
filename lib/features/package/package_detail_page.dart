@@ -176,6 +176,20 @@ class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          key: const Key('package_detail_service'),
+          onPressed: package.serviceId == null
+              ? () => AppNavigation.go(context, AppRoutes.services)
+              : () => AppNavigation.go(
+                    context,
+                    '/services/${package.serviceId}',
+                  ),
+          icon: const Icon(Icons.spa_outlined),
+          label: Text(package.serviceName == null
+              ? 'Hizmetlere Dön'
+              : '${package.serviceName} hizmetini gör'),
+        ),
         if (package.description != null) ...[
           const SizedBox(height: 12),
           Text(

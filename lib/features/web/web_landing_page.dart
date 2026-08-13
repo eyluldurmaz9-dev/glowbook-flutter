@@ -120,10 +120,38 @@ class _Header extends StatelessWidget {
                 const Spacer(),
                 if (showNavigation)
                   for (final link in links)
-                    TextButton(
-                        key: Key('web_nav_${link.label}'),
-                        onPressed: () => onNavigate(link.key),
-                        child: Text(link.label)),
+                    if (link.label == 'Hizmetler')
+                      PopupMenuButton<String>(
+                        key: const Key('web_services_menu'),
+                        tooltip: 'Hizmetler menüsü',
+                        onSelected: (value) {
+                          final targetLabel =
+                              value == 'packages' ? 'Paketler' : 'Hizmetler';
+                          final target = links
+                              .firstWhere((item) => item.label == targetLabel);
+                          onNavigate(target.key);
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(
+                              value: 'services', child: Text('Tüm Hizmetler')),
+                          PopupMenuItem(
+                              value: 'packages', child: Text('Paketler')),
+                        ],
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          child: Row(children: [
+                            Text('Hizmetler'),
+                            SizedBox(width: 3),
+                            Icon(Icons.keyboard_arrow_down, size: 18),
+                          ]),
+                        ),
+                      )
+                    else
+                      TextButton(
+                          key: Key('web_nav_${link.label}'),
+                          onPressed: () => onNavigate(link.key),
+                          child: Text(link.label)),
                 if (!showNavigation)
                   PopupMenuButton<_HeaderLink>(
                     key: const Key('web_mobile_menu'),

@@ -37,6 +37,21 @@ void main() {
     expect(find.text('Bize ulaşın'), findsOneWidget);
   });
 
+  testWidgets(
+      'Hizmetler menüsü Tüm Hizmetler ve Paketler alt eylemlerini sunar',
+      (tester) async {
+    await _pumpLanding(tester, const Size(1440, 900));
+
+    await tester.tap(find.byKey(const Key('web_services_menu')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tüm Hizmetler'), findsOneWidget);
+    expect(find.text('Paketler'), findsWidgets);
+    await tester.tap(find.text('Paketler').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Hydrafacial Premium'), findsOneWidget);
+  });
+
   testWidgets('Dar web görünümü taşmadan mobil menü kullanır', (tester) async {
     await _pumpLanding(tester, const Size(390, 844));
 

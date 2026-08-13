@@ -82,6 +82,14 @@ class ServicesCatalogContent extends StatelessWidget {
               onPressed: () => AppNavigation.go(context, AppRoutes.packages),
             ),
           ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            key: const Key('services_open_packages'),
+            onPressed: () => AppNavigation.go(context, AppRoutes.packages),
+            icon: const Icon(Icons.inventory_2_outlined),
+            label: const Text('Paketleri Gör'),
+          ),
+          const SizedBox(height: 14),
           GlowSearchBar(
             hintText: 'Hizmet ara',
             controller: searchController,
