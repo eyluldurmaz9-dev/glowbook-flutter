@@ -41,5 +41,12 @@ void main() {
       ),
       'Bu hesap yönetici hesabı değil.',
     );
+    expect(
+      safeApiMessage(
+        statusCode: 400,
+        rawMessage: 'Seçilen personel bu hizmeti vermiyor.',
+      ),
+      'Seçilen personel bu hizmeti vermiyor.',
+    );
   });
 }

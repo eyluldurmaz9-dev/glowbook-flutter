@@ -70,6 +70,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('admin_nav_packages')));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('admin_package_edit')));
     await tester.tap(find.byKey(const Key('admin_package_edit')));
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -93,6 +94,72 @@ void main() {
 
     expect(find.text('EMP-1'), findsOneWidget);
     expect(find.text('Elif Yılmaz'), findsOneWidget);
+    addTearDown(() => _resetViewport(tester));
+  });
+
+  testWidgets('Personel oluşturma seçilen alt hizmet yetkinliğini kaydeder',
+      (tester) async {
+    _setWideViewport(tester);
+    final backend = _FakeAdminBackend();
+    await _pumpAdmin(tester, backend: backend);
+
+    await tester.tap(find.byKey(const Key('admin_nav_employees')));
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Personel Ekle');
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Personel ID'), 'EMP-2');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Ad'), 'Ayşe');
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Soyad'), 'Uzman');
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Şifre'), 'safe-password');
+    await _tapText(tester, 'Hydrafacial');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Standart'));
+    await tester.pump();
+    await _tapText(tester, 'Kaydet');
+    await tester.pumpAndSettle();
+
+    expect(backend.createdEmployee?['optionIds'], [11]);
+    addTearDown(() => _resetViewport(tester));
+  });
+
+  testWidgets('Personel düzenleme mevcut yetkinliği seçili gösterir',
+      (tester) async {
+    _setWideViewport(tester);
+    await _pumpAdmin(tester, backend: _FakeAdminBackend());
+
+    await tester.tap(find.byKey(const Key('admin_nav_employees')));
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Düzenle');
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Hydrafacial');
+    await tester.pumpAndSettle();
+
+    final checkbox = tester.widget<CheckboxListTile>(
+      find.widgetWithText(CheckboxListTile, 'Standart'),
+    );
+    expect(checkbox.value, isTrue);
+    addTearDown(() => _resetViewport(tester));
+  });
+
+  testWidgets('Personel silme güvenli pasifleştirme onayı gösterir',
+      (tester) async {
+    _setWideViewport(tester);
+    final backend = _FakeAdminBackend();
+    await _pumpAdmin(tester, backend: backend);
+
+    await tester.tap(find.byKey(const Key('admin_nav_employees')));
+    await tester.pumpAndSettle();
+    final deleteButton = find.byKey(const Key('admin_employee_delete_EMP-1'));
+    tester.widget<TextButton>(deleteButton).onPressed!();
+    await tester.pumpAndSettle();
+    expect(find.text('Personeli Sil'), findsOneWidget);
+    await _tapText(tester, 'Onayla', last: true);
+    await tester.pumpAndSettle();
+
+    expect(backend.deactivateEmployeeCount, 1);
     addTearDown(() => _resetViewport(tester));
   });
 
@@ -219,6 +286,8 @@ class _FakeAdminBackend extends GlowBackendService {
   int createServiceCount = 0;
   int deactivateServiceCount = 0;
   int updatePackageCount = 0;
+  int deactivateEmployeeCount = 0;
+  Map<String, dynamic>? createdEmployee;
 
   final services = const [
     {
@@ -260,6 +329,18 @@ class _FakeAdminBackend extends GlowBackendService {
       'phone': '5551112233',
       'email': 'elif@example.com',
       'active': true,
+      'assignedServiceCount': 1,
+      'assignedServices': [
+        {
+          'employeeServiceId': 1,
+          'employeeId': 'EMP-1',
+          'employeeName': 'Elif Yılmaz',
+          'serviceId': 1,
+          'serviceName': 'Hydrafacial',
+          'optionId': 11,
+          'optionName': 'Standart',
+        },
+      ],
     },
   ];
 
@@ -314,6 +395,19 @@ class _FakeAdminBackend extends GlowBackendService {
   ) async {
     updatePackageCount++;
     return {'packageId': packageId, ...payload};
+  }
+
+  @override
+  Future<Map<String, dynamic>> createEmployee(
+      Map<String, dynamic> payload) async {
+    createdEmployee = payload;
+    return payload;
+  }
+
+  @override
+  Future<Map<String, dynamic>> deactivateEmployee(String employeeId) async {
+    deactivateEmployeeCount++;
+    return {...employees.first, 'active': false};
   }
 }
 

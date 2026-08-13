@@ -379,17 +379,6 @@ Future<List<Map<String, dynamic>>> _withListFallback(
   }
 }
 
-List<Map<String, dynamic>> _fallbackSlotsFor(String date) {
-  return [
-    {
-      'employeeId': 'GLW001',
-      'employeeName': 'GlowBook Uzmani',
-      'appointmentDate': date,
-      'availableTimes': const ['10:00', '11:00', '14:00', '15:00', '16:00'],
-    },
-  ];
-}
-
 final servicesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
   return _withCatalogFallback(
     ref.watch(glowBackendServiceProvider).getServices,
@@ -494,24 +483,27 @@ final customersProvider =
       _withListFallback(ref.watch(glowBackendServiceProvider).getCustomers),
 );
 
+final employeesByServiceOptionProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, EmployeeServiceOptionQuery>(
+        (ref, query) {
+  return ref.watch(glowBackendServiceProvider).getEmployeesByServiceOption(
+        query.serviceId,
+        query.optionId,
+      );
+});
+
 final employeesByServiceProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, serviceId) {
-  return _withListFallback(
-    () =>
-        ref.watch(glowBackendServiceProvider).getEmployeesByService(serviceId),
-    _fallbackEmployees,
-  );
+  return ref.watch(glowBackendServiceProvider).getEmployeesByService(serviceId);
 });
 
 final availableSlotsProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, AvailableSlotsQuery>((ref, query) {
-  return _withListFallback(
-    () => ref.watch(glowBackendServiceProvider).getAvailableSlots(
-          serviceId: query.serviceId,
-          date: query.date,
-        ),
-    _fallbackSlotsFor(query.date),
-  );
+  return ref.watch(glowBackendServiceProvider).getAvailableSlots(
+        serviceId: query.serviceId,
+        optionId: query.optionId,
+        date: query.date,
+      );
 });
 
 final availableSlotsForDatesProvider = FutureProvider.autoDispose
@@ -521,7 +513,11 @@ final availableSlotsForDatesProvider = FutureProvider.autoDispose
   for (final date in query.dates) {
     final daySlots = await ref.watch(
       availableSlotsProvider(
-        AvailableSlotsQuery(serviceId: query.serviceId, date: date),
+        AvailableSlotsQuery(
+          serviceId: query.serviceId,
+          optionId: query.optionId,
+          date: date,
+        ),
       ).future,
     );
     results.addAll(daySlots);
@@ -575,40 +571,66 @@ final customerWaitingListProvider = FutureProvider.autoDispose
 final appLoadingProvider = StateProvider<bool>((ref) => false);
 
 class AvailableSlotsQuery {
-  const AvailableSlotsQuery({required this.serviceId, required this.date});
+  const AvailableSlotsQuery({
+    required this.serviceId,
+    required this.optionId,
+    required this.date,
+  });
 
   final int serviceId;
+  final int optionId;
   final String date;
 
   @override
   bool operator ==(Object other) {
     return other is AvailableSlotsQuery &&
         other.serviceId == serviceId &&
+        other.optionId == optionId &&
         other.date == date;
   }
 
   @override
-  int get hashCode => Object.hash(serviceId, date);
+  int get hashCode => Object.hash(serviceId, optionId, date);
+}
+
+class EmployeeServiceOptionQuery {
+  const EmployeeServiceOptionQuery(
+      {required this.serviceId, required this.optionId});
+
+  final int serviceId;
+  final int optionId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is EmployeeServiceOptionQuery &&
+      other.serviceId == serviceId &&
+      other.optionId == optionId;
+
+  @override
+  int get hashCode => Object.hash(serviceId, optionId);
 }
 
 class AvailableSlotsBatchQuery {
   const AvailableSlotsBatchQuery({
     required this.serviceId,
+    required this.optionId,
     required this.dates,
   });
 
   final int serviceId;
+  final int optionId;
   final List<String> dates;
 
   @override
   bool operator ==(Object other) {
     return other is AvailableSlotsBatchQuery &&
         other.serviceId == serviceId &&
+        other.optionId == optionId &&
         other.dates.join('|') == dates.join('|');
   }
 
   @override
-  int get hashCode => Object.hash(serviceId, dates.join('|'));
+  int get hashCode => Object.hash(serviceId, optionId, dates.join('|'));
 }
 
 class DateRangeQuery {

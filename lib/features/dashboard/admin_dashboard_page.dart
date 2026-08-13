@@ -293,15 +293,19 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
     final id = item['employeeId']?.toString();
     if (id == null || id.isEmpty) return;
     final confirmed = await _confirm(
-      title: 'Personeli pasifleştir',
-      message: '${_employeeName(item)} pasifleştirilsin mi?',
+      title: 'Personeli Sil',
+      message: 'Bu personeli silmek istediğinize emin misiniz? '
+          'Geçmiş randevuları korunacak; kayıt pasifleştirilerek yeni randevulara kapatılacaktır.',
     );
     if (!confirmed) return;
     await _runAdminAction(() async {
       await ref.read(glowBackendServiceProvider).deactivateEmployee(id);
       ref.invalidate(employeesProvider);
       if (mounted) {
-        GlowSnackBar.showSuccess(context, 'Personel pasifleştirildi');
+        GlowSnackBar.showSuccess(
+          context,
+          'Personel pasifleştirildi; geçmiş randevular korundu.',
+        );
       }
     });
   }
@@ -848,23 +852,16 @@ class _EmployeesSection extends ConsumerWidget {
               ? const GlowEmptyState(title: 'Personel bulunamadı')
               : _AdminTable(
                   columns: const [
-                    DataColumn(label: Text('ID')),
-                    DataColumn(label: Text('Ad Soyad')),
-                    DataColumn(label: Text('Telefon')),
-                    DataColumn(label: Text('E-posta')),
-                    DataColumn(label: Text('Durum')),
                     DataColumn(label: Text('İşlem')),
+                    DataColumn(label: Text('Ad Soyad')),
+                    DataColumn(label: Text('İletişim')),
+                    DataColumn(label: Text('Durum')),
+                    DataColumn(label: Text('Yetkinlik')),
                   ],
                   rows: [
                     for (final item in items)
                       DataRow(
                         cells: [
-                          DataCell(Text(item['employeeId']?.toString() ?? '-')),
-                          DataCell(Text(_employeeName(item))),
-                          DataCell(Text(item['phone']?.toString() ?? '-')),
-                          DataCell(Text(item['email']?.toString() ?? '-')),
-                          DataCell(Text(
-                              item['active'] == false ? 'Pasif' : 'Aktif')),
                           DataCell(
                             Wrap(
                               spacing: AppSpacing.xs,
@@ -874,13 +871,35 @@ class _EmployeesSection extends ConsumerWidget {
                                   child: const Text('Düzenle'),
                                 ),
                                 TextButton(
+                                  key: ValueKey(
+                                    'admin_employee_delete_${item['employeeId']}',
+                                  ),
                                   onPressed:
                                       busy ? null : () => onDeactivate(item),
-                                  child: const Text('Pasifleştir'),
+                                  child: const Text('Sil'),
                                 ),
                               ],
                             ),
                           ),
+                          DataCell(Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_employeeName(item)),
+                              Text(
+                                item['employeeId']?.toString() ?? '-',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          )),
+                          DataCell(Text(
+                              item['email']?.toString().trim().isNotEmpty ==
+                                      true
+                                  ? item['email'].toString()
+                                  : item['phone']?.toString() ?? '-')),
+                          DataCell(Text(
+                              item['active'] == false ? 'Pasif' : 'Aktif')),
+                          DataCell(Text(_employeeCompetencySummary(item))),
                         ],
                       ),
                   ],
@@ -1590,6 +1609,11 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
       TextEditingController(text: widget.item?['email']?.toString());
   final _password = TextEditingController();
   late bool _active = widget.item?['active'] != false;
+  late final Set<int> _selectedOptionIds =
+      ((widget.item?['assignedServices'] as List?) ?? const [])
+          .map((item) => _intValue((item as Map?)?['optionId']))
+          .whereType<int>()
+          .toSet();
 
   @override
   void dispose() {
@@ -1631,13 +1655,22 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
         TextFormField(
             controller: _password,
             decoration: InputDecoration(
-                labelText: editing ? 'Şifre (backend için zorunlu)' : 'Şifre'),
+                labelText:
+                    editing ? 'Şifre (değiştirmek için doldurun)' : 'Şifre'),
             obscureText: true,
-            validator: _required),
+            validator: editing ? null : _required),
         SwitchListTile(
             value: _active,
             onChanged: (value) => setState(() => _active = value),
             title: const Text('Aktif')),
+        _EmployeeCompetenciesField(
+          selectedOptionIds: _selectedOptionIds,
+          onChanged: (ids) => setState(() {
+            _selectedOptionIds
+              ..clear()
+              ..addAll(ids);
+          }),
+        ),
       ],
       onSubmit: () => {
         'employeeId': _employeeId.text.trim(),
@@ -1647,7 +1680,99 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
         'email': _email.text.trim(),
         'password': _password.text.trim(),
         'active': _active,
+        'optionIds': _selectedOptionIds.toList()..sort(),
       },
+    );
+  }
+}
+
+class _EmployeeCompetenciesField extends ConsumerWidget {
+  const _EmployeeCompetenciesField({
+    required this.selectedOptionIds,
+    required this.onChanged,
+  });
+
+  final Set<int> selectedOptionIds;
+  final ValueChanged<Set<int>> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref.watch(servicesProvider).when(
+          loading: () => const GlowLoading(message: 'Hizmetler yükleniyor'),
+          error: (error, _) => GlowError(
+            message: _safeAdminError(error),
+            onRetry: () => ref.invalidate(servicesProvider),
+          ),
+          data: (services) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hizmet Yetkinlikleri',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 6),
+              const Text('Personelin verebildiği alt hizmetleri seçin.'),
+              const SizedBox(height: 10),
+              for (final service in services)
+                if (service['active'] != false && service['serviceId'] is int)
+                  _CompetencyServiceGroup(
+                    service: service,
+                    options: ref.watch(
+                      serviceOptionsProvider(service['serviceId'] as int),
+                    ),
+                    selectedOptionIds: selectedOptionIds,
+                    onChanged: onChanged,
+                  ),
+            ],
+          ),
+        );
+  }
+}
+
+class _CompetencyServiceGroup extends StatelessWidget {
+  const _CompetencyServiceGroup({
+    required this.service,
+    required this.options,
+    required this.selectedOptionIds,
+    required this.onChanged,
+  });
+
+  final Map<String, dynamic> service;
+  final AsyncValue<List<Map<String, dynamic>>> options;
+  final Set<int> selectedOptionIds;
+  final ValueChanged<Set<int>> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      title: Text(service['serviceName']?.toString() ?? 'Hizmet'),
+      children: [
+        options.when(
+          loading: () => const LinearProgressIndicator(),
+          error: (error, _) => Text(_safeAdminError(error)),
+          data: (items) => Column(
+            children: [
+              for (final option in items)
+                if (option['active'] != false && option['optionId'] is int)
+                  CheckboxListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title:
+                        Text(option['optionName']?.toString() ?? 'Alt hizmet'),
+                    value: selectedOptionIds.contains(option['optionId']),
+                    onChanged: (selected) {
+                      final next = {...selectedOptionIds};
+                      selected == true
+                          ? next.add(option['optionId'] as int)
+                          : next.remove(option['optionId']);
+                      onChanged(next);
+                    },
+                  ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1871,6 +1996,20 @@ String _employeeName(Map<String, dynamic> item) {
   if (fullName != null && fullName.trim().isNotEmpty) return fullName;
   final text = '${item['firstName'] ?? ''} ${item['lastName'] ?? ''}'.trim();
   return text.isEmpty ? item['employeeId']?.toString() ?? 'Personel' : text;
+}
+
+String _employeeCompetencySummary(Map<String, dynamic> item) {
+  final assignments = (item['assignedServices'] as List?) ?? const [];
+  final names = assignments
+      .map((value) => (value as Map?)?['optionName']?.toString())
+      .whereType<String>()
+      .where((name) => name.trim().isNotEmpty)
+      .toList();
+  if (names.isEmpty) return '0 yetkinlik';
+  final preview = names.take(2).join(', ');
+  return names.length > 2
+      ? '${names.length} • $preview…'
+      : '${names.length} • $preview';
 }
 
 int? _intValue(Object? value) {

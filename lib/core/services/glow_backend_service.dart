@@ -172,8 +172,17 @@ class GlowBackendService implements AuthBackend {
     });
   }
 
+  Future<List<Map<String, dynamic>>> getEmployeesByServiceOption(
+    int serviceId,
+    int optionId,
+  ) {
+    return _getList(
+      '/api/catalog/services/$serviceId/options/$optionId/employees',
+    );
+  }
+
   Future<List<Map<String, dynamic>>> getEmployeesByService(int serviceId) {
-    return _getList('/api/admin/employees/services/$serviceId');
+    return _getList('/api/catalog/services/$serviceId/employees');
   }
 
   Future<Map<String, dynamic>> createEmployeeLeave(
@@ -250,11 +259,16 @@ class GlowBackendService implements AuthBackend {
 
   Future<List<Map<String, dynamic>>> getAvailableSlots({
     required int serviceId,
+    required int optionId,
     required String date,
   }) {
     return _getList(
       '/api/appointments/available-slots',
-      queryParameters: {'serviceId': serviceId, 'date': date},
+      queryParameters: {
+        'serviceId': serviceId,
+        'optionId': optionId,
+        'date': date,
+      },
     );
   }
 

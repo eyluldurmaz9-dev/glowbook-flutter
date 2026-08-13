@@ -120,7 +120,8 @@ String safeApiMessage({
   switch (statusCode) {
     case 400:
       if (lower == 'bu hesap personel hesabı değil.' ||
-          lower == 'bu hesap yönetici hesabı değil.') {
+          lower == 'bu hesap yönetici hesabı değil.' ||
+          lower == 'seçilen personel bu hizmeti vermiyor.') {
         return rawMessage!.trim();
       }
       return 'Gönderilen bilgileri kontrol edip tekrar dene.';

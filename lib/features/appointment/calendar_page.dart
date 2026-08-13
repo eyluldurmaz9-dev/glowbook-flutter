@@ -42,46 +42,74 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                 if (firstServiceId is! int) {
                   return const GlowEmptyState(title: 'Müsaitlik bulunamadı');
                 }
-                final date = _selectedDate.toIso8601String().split('T').first;
-                final slots = ref.watch(
-                  availableSlotsProvider(
-                    AvailableSlotsQuery(serviceId: firstServiceId, date: date),
-                  ),
-                );
-                return slots.when(
-                  loading: () =>
-                      const GlowLoading(message: 'Saatler yükleniyor'),
-                  error: (error, _) => GlowError(message: error.toString()),
-                  data: (items) {
-                    if (items.isEmpty) {
-                      return const GlowEmptyState(title: 'Müsait saat yok');
-                    }
-                    return Column(
-                      children: [
-                        for (final item in items) ...[
-                          GlowCard(
-                            child: ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(
-                                item['employeeName']?.toString() ?? 'Personel',
-                              ),
-                              subtitle: Text(
-                                (item['availableTimes'] as List?)?.join(', ') ??
-                                    '',
-                              ),
+                return ref.watch(serviceOptionsProvider(firstServiceId)).when(
+                      loading: () => const GlowLoading(
+                          message: 'Alt hizmetler yükleniyor'),
+                      error: (error, _) => GlowError(message: error.toString()),
+                      data: (options) {
+                        final firstOptionId =
+                            options.isEmpty ? null : options.first['optionId'];
+                        if (firstOptionId is! int) {
+                          return const GlowEmptyState(
+                            title: 'Müsaitlik bulunamadı',
+                          );
+                        }
+                        final date =
+                            _selectedDate.toIso8601String().split('T').first;
+                        final slots = ref.watch(
+                          availableSlotsProvider(
+                            AvailableSlotsQuery(
+                              serviceId: firstServiceId,
+                              optionId: firstOptionId,
+                              date: date,
                             ),
                           ),
-                          const SizedBox(height: 10),
-                        ],
-                      ],
+                        );
+                        return _SlotResults(slots: slots);
+                      },
                     );
-                  },
-                );
               },
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SlotResults extends StatelessWidget {
+  const _SlotResults({required this.slots});
+
+  final AsyncValue<List<Map<String, dynamic>>> slots;
+
+  @override
+  Widget build(BuildContext context) {
+    return slots.when(
+      loading: () => const GlowLoading(message: 'Saatler yükleniyor'),
+      error: (error, _) => GlowError(message: error.toString()),
+      data: (items) {
+        if (items.isEmpty) {
+          return const GlowEmptyState(title: 'Müsait saat yok');
+        }
+        return Column(
+          children: [
+            for (final item in items) ...[
+              GlowCard(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    item['employeeName']?.toString() ?? 'Personel',
+                  ),
+                  subtitle: Text(
+                    (item['availableTimes'] as List?)?.join(', ') ?? '',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
+        );
+      },
     );
   }
 }

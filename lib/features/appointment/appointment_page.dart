@@ -55,12 +55,13 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
         .toSet()
         .toList()
       ..sort();
-    final slots = _service == null
+    final slots = _service == null || _option == null
         ? null
         : ref.watch(
             availableSlotsForDatesProvider(
               AvailableSlotsBatchQuery(
                 serviceId: _service!.id ?? 0,
+                optionId: _option!.id ?? 0,
                 dates: slotDates,
               ),
             ),
@@ -307,11 +308,13 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
 
   void _refreshSlots() {
     final serviceId = _service?.id;
-    if (serviceId == null) return;
+    final optionId = _option?.id;
+    if (serviceId == null || optionId == null) return;
     ref.invalidate(
       availableSlotsForDatesProvider(
         AvailableSlotsBatchQuery(
           serviceId: serviceId,
+          optionId: optionId,
           dates: (_candidateDates.map(BookingDateUtils.formatDate).toList()
             ..sort()),
         ),
@@ -353,6 +356,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     try {
       final query = AvailableSlotsQuery(
         serviceId: serviceId,
+        optionId: optionId,
         date: BookingDateUtils.formatDate(_date),
       );
       final freshSlots = mapBookingSlots(
