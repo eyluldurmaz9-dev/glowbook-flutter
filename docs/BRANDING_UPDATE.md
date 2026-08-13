@@ -1,22 +1,42 @@
-# GlowBook Marka Güncellemesi
+# GlowBook Platform Marka Güncellemesi
 
-## Kaynak
+## Resmî kaynak ve ikon ana dosyası
 
-Kullanıcının sağladığı resmî kare GlowBook logosu, görsel içeriği değiştirilmeden
-`assets/images/branding/glowbook-official-logo.png` yoluna eklendi.
+Resmî tam logo `assets/images/branding/glowbook-official-logo.png` olarak korunur. Küçük işletim sistemi ve tarayıcı ikonlarında yazılar okunmaz hâle gelmesin diye aynı onaylı logodaki kadın profili, `S/B`, takvim ve yapraklardan oluşan merkez işaret; yazısız ve güvenli maske boşluklu olarak `assets/images/branding/glowbook-platform-icon.png` dosyasına türetildi. Bu varlık yalnızca marka/platform ikonu içindir; hizmet, paket, personel veya müşteri görseli değildir.
 
-## Kullanım alanları
+## Web ve PWA
 
-- Uygulama genelindeki `GlowBrand` bileşeni
-- Splash, giriş ve web açılış ekranları
-- Admin paneli marka alanı
-- Android launcher ikonları (mdpi–xxxhdpi)
-- Web favicon, PWA ve maskable ikonları
+- `web/favicon.png`: 64×64 tarayıcı sekmesi ikonu.
+- `web/icons/Icon-192.png` ve `Icon-512.png`: PWA kurulum ikonları.
+- `web/icons/Icon-maskable-192.png` ve `Icon-maskable-512.png`: maskable PWA ikonları.
+- `web/index.html`: favicon ve Apple touch icon referanslarına `v=20260813` önbellek sürümü eklendi.
+- `web/manifest.json`: 192, 512 ve maskable dosyalarını aktif olarak kullanır.
 
-İkon türevleri yalnızca oran korunarak yeniden boyutlandırıldı. Kaynak logo üzerine
-metin, efekt veya yeni sembol eklenmedi.
+## Android
 
-## Doğrulama
+- `mipmap-mdpi`–`mipmap-xxxhdpi`: standart `ic_launcher.png` ve `ic_launcher_round.png` boyutları yenilendi.
+- Android 8+ için `mipmap-anydpi-v26/ic_launcher.xml` ve `ic_launcher_round.xml` adaptive icon tanımları eklendi.
+- Adaptive foreground `drawable-nodpi/ic_launcher_foreground.png`, arka plan rengi `#FAE4E8` olarak tanımlandı.
+- `AndroidManifest.xml`, normal ve yuvarlak launcher ikonlarını kullanır. Android recent-app/task görünümü uygulama ikonunu manifestten aldığı için ayrıca eski bir referans yoktur.
+- Splash XML dosyalarında logo aktif değildir; yorum satırındaki örnek `launch_image` referansı çalışma zamanında kullanılmaz ve splash tasarımı değiştirilmedi.
 
-Asset ve web ikonlarının varlığı otomatik testle kontrol edilir. Web manifest ve
-Android kaynakları aynı resmî logodan türetilmiştir.
+## iOS, macOS ve Windows
+
+- `ios/Runner/Assets.xcassets/AppIcon.appiconset/` içindeki tüm `Contents.json` boyutları opak merkez işaretten yeniden üretildi. Windows ortamında fiziksel iOS cihaz/simülatör doğrulaması yapılamaz.
+- Aktif eski masaüstü markası kalmaması için macOS AppIcon seti ve Windows `app_icon.ico` da aynı merkez işaretle güncellendi.
+
+## Önbellek ve kurulum doğrulaması
+
+### Web
+
+1. Yeni dağıtım tamamlandıktan sonra sayfada `Ctrl+F5` ile sert yenileme yapın.
+2. Eski ikon sürerse tarayıcının GlowBook site verilerini/cache'ini temizleyin.
+3. Kurulu PWA eski ikonu tutarsa PWA'yı kaldırıp yeniden yükleyin.
+
+### Android
+
+1. Eski GlowBook uygulamasını cihazdan kaldırın; launcher bazı cihazlarda ikonu paket adına göre önbellekler.
+2. Yeni release APK'yı yeniden kurun.
+3. Ana ekran ve son uygulamalar görünümünde yeni merkez işareti doğrulayın.
+
+Paket kimliği yalnızca önbelleği aşmak amacıyla değiştirilmemiştir.
