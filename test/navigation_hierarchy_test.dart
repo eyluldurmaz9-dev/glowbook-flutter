@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:glowbook_flutter/core/services/glow_backend_service.dart';
 import 'package:glowbook_flutter/core/theme/app_theme.dart';
 import 'package:glowbook_flutter/core/widgets/glow_widgets.dart';
+import 'package:glowbook_flutter/features/catalog/service_image_resolver.dart';
 import 'package:glowbook_flutter/features/package/package_detail_page.dart';
 import 'package:glowbook_flutter/features/service/service_detail_page.dart';
 import 'package:glowbook_flutter/features/service/services_page.dart';
@@ -101,10 +102,10 @@ void main() {
             .overrideWith((ref) => _SignedOutController(_FakeAuthBackend())),
         servicePackagesProvider.overrideWith((ref, id) async => const [
               {
-                'packageId': 70,
-                'serviceId': 7,
-                'serviceName': 'Cilt Bakımı',
-                'packageName': 'İlgili Cilt Paketi',
+                'packageId': 3,
+                'serviceId': 3,
+                'serviceName': 'Masaj ve Spa',
+                'packageName': 'Spa Yenilenme Paketi',
                 'totalSession': 6,
                 'active': true,
               },
@@ -112,12 +113,21 @@ void main() {
       ],
       child: MaterialApp(
           theme: AppTheme.lightTheme,
-          home: const PackageDetailPage(serviceId: 7, packageId: 70)),
+          home: const PackageDetailPage(serviceId: 3, packageId: 3)),
     ));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('package_detail_service')), findsOneWidget);
-    expect(find.text('Cilt Bakımı hizmetini gör'), findsOneWidget);
+    expect(find.text('Masaj ve Spa hizmetini gör'), findsOneWidget);
+    final hero = find.descendant(
+      of: find.byKey(const Key('package_detail_hero_3')),
+      matching: find.byType(Image),
+    );
+    expect(hero, findsOneWidget);
+    expect(
+      (tester.widget<Image>(hero).image as AssetImage).assetName,
+      GlowBookAssets.spa,
+    );
     expect(
         tester
             .widget<OutlinedButton>(

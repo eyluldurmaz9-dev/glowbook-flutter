@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -36,5 +37,43 @@ void main() {
   test('Pubspec onaylı görsel klasörünü bildirir', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
     expect(pubspec, contains('- assets/images/'));
+  });
+
+  test('İçerik resolverları logo veya platform ikonunu döndürmez', () {
+    const brandingFragments = <String>[
+      '/branding/',
+      'glowbook-official-logo',
+      'glowbook-platform-icon',
+    ];
+    final contentAssets = <String>{
+      ...GlowBookAssets.approved,
+      ...PackageImageResolver.approved,
+    };
+    for (final asset in contentAssets) {
+      for (final fragment in brandingFragments) {
+        expect(asset, isNot(contains(fragment)), reason: asset);
+      }
+    }
+  });
+
+  test('Lazer, spa ve vücut görselleri farklı dosya içeriğine sahiptir', () {
+    final hashes = <String>{};
+    for (final asset in const [
+      GlowBookAssets.laser,
+      GlowBookAssets.spa,
+      GlowBookAssets.bodyTreatment,
+    ]) {
+      hashes.add(base64Encode(File(asset).readAsBytesSync()));
+    }
+    expect(hashes, hasLength(3));
+  });
+
+  test('Web hero görseli aynı ekranda büyük içerik olarak tekrarlanmaz', () {
+    final source =
+        File('lib/features/web/web_landing_page.dart').readAsStringSync();
+    expect(
+        RegExp("Image\\.asset\\('assets/images/glowbook-hero.jpg'")
+            .allMatches(source),
+        hasLength(1));
   });
 }

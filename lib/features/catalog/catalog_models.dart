@@ -21,7 +21,10 @@ class CatalogService {
       id: _intValue(json['serviceId']),
       name: _cleanText(json['serviceName']) ?? 'Hizmet',
       description: _cleanText(json['description']),
-      image: ServiceImageResolver.imageFor(_cleanText(json['serviceName'])),
+      image: ServiceImageResolver.imageFor(
+        _cleanText(json['serviceName']),
+        serviceId: _intValue(json['serviceId']),
+      ),
       active: _boolValue(json['active']),
     );
   }

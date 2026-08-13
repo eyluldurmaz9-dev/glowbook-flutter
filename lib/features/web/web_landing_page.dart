@@ -244,7 +244,7 @@ class _About extends StatelessWidget {
         child: LayoutBuilder(builder: (context, constraints) {
           final image = ClipRRect(
               borderRadius: BorderRadius.circular(28),
-              child: Image.asset('assets/images/glowbook-hero.jpg',
+              child: Image.asset('assets/images/glowbook-hydrafacial.jpg',
                   height: 360, width: double.infinity, fit: BoxFit.cover));
           final copy =
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

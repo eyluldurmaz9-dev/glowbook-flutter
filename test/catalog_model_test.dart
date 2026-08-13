@@ -52,24 +52,44 @@ void main() {
     );
   });
 
-  test('Onaylı kategorisi olmayan servis nötr salon fallback kullanır', () {
-    for (final service in const [
-      'Lazer Epilasyon',
-      'Masaj ve Spa',
-      'Bölgesel İncelme',
-      'Pedikür',
-      'Saç Kesimi',
-      'Makyaj',
-    ]) {
-      final resolution = ServiceImageResolver.resolve(service);
-      expect(resolution.asset, GlowBookAssets.hero, reason: service);
-      expect(resolution.neutralFallback, isTrue, reason: service);
+  test('Kategoriye özel hizmet fallbackleri semantik olarak ayrılır', () {
+    final expected = <String, String>{
+      'Lazer Epilasyon': GlowBookAssets.laser,
+      'Masaj ve Spa': GlowBookAssets.spa,
+      'Bölgesel İncelme': GlowBookAssets.bodyTreatment,
+      'Pedikür': GlowBookAssets.nails,
+      'Saç Kesimi': GlowBookAssets.hair,
+      'Makyaj': GlowBookAssets.makeup,
+    };
+    for (final entry in expected.entries) {
+      final resolution = ServiceImageResolver.resolve(entry.key);
+      expect(resolution.asset, entry.value, reason: entry.key);
+      expect(resolution.neutralFallback, isFalse, reason: entry.key);
     }
+    expect(
+      ServiceImageResolver.imageFor('Lazer Epilasyon'),
+      isNot(ServiceImageResolver.imageFor('Masaj ve Spa')),
+    );
+  });
+
+  test('Üretim hizmet ID eşlemeleri ad fallbackinden önce uygulanır', () {
+    expect(
+      ServiceImageResolver.imageFor('Yanlış ad', serviceId: 2),
+      GlowBookAssets.laser,
+    );
+    expect(
+      ServiceImageResolver.imageFor('Yanlış ad', serviceId: 3),
+      GlowBookAssets.spa,
+    );
+    expect(
+      ServiceImageResolver.imageFor('Yanlış ad', serviceId: 6),
+      GlowBookAssets.nails,
+    );
   });
 
   test('Paket API modeli paket görselini merkezi resolverdan alır', () {
     final package = CatalogPackage.fromJson({
-      'packageId': 4,
+      'packageId': 5,
       'serviceId': 2,
       'serviceName': 'Cilt Bakımı',
       'packageName': 'Hydrafacial 6 Seans',
@@ -103,5 +123,26 @@ void main() {
 
     expect(resolved, names.values.toList());
     expect(resolved.toSet(), hasLength(resolved.length));
+  });
+
+  test('Üretim paket ID eşlemeleri paket detay görselini belirler', () {
+    final expected = <int, String>{
+      3: GlowBookAssets.spa,
+      4: GlowBookAssets.bodyTreatment,
+      6: PackageImageResolver.laserFiveRegion,
+      7: PackageImageResolver.laserFullBody,
+      11: GlowBookAssets.nails,
+    };
+    for (final entry in expected.entries) {
+      expect(
+        PackageImageResolver.imageFor(
+          packageId: entry.key,
+          packageName: 'Bilinmeyen paket',
+          serviceName: 'Bilinmeyen hizmet',
+        ),
+        entry.value,
+        reason: 'packageId=${entry.key}',
+      );
+    }
   });
 }

@@ -24,15 +24,37 @@ class PackageImageResolver {
     skinMedical,
   };
 
+  static const _assetByProductionPackageId = <int, String>{
+    1: skinAntiAging,
+    2: laserThreeRegion,
+    3: GlowBookAssets.spa,
+    4: GlowBookAssets.bodyTreatment,
+    5: skinHydrafacial,
+    6: laserFiveRegion,
+    7: laserFullBody,
+    8: laserThreeRegion,
+    9: GlowBookAssets.lashes,
+    10: GlowBookAssets.bodyTreatment,
+    11: GlowBookAssets.nails,
+    12: GlowBookAssets.nails,
+    13: GlowBookAssets.lashes,
+    14: GlowBookAssets.bodyTreatment,
+    15: GlowBookAssets.bodyTreatment,
+  };
+
   static String imageFor({
     int? packageId,
     String? packageName,
     String? serviceName,
   }) {
+    final idAsset =
+        packageId == null ? null : _assetByProductionPackageId[packageId];
+    if (idAsset != null) return idAsset;
+
     final name = _normalize(packageName);
     final service = _normalize(serviceName);
-
-    if (_containsAny(name, const ['3 bolge', 'uc bolge'])) {
+    if (_containsAny(
+        name, const ['3 bolge', 'uc bolge', 'yuz bolgesi', 'lazer devam'])) {
       return laserThreeRegion;
     }
     if (_containsAny(name, const ['5 bolge', 'bes bolge'])) {
@@ -41,24 +63,34 @@ class PackageImageResolver {
     if (_containsAny(name, const ['tum vucut', 'full body'])) {
       return laserFullBody;
     }
-    if (_containsAny(name, const ['hydrafacial', 'hydrofacial', 'glow cilt'])) {
+    if (_containsAny(name, const ['hydrafacial', 'hydrofacial'])) {
       return skinHydrafacial;
     }
-    if (_containsAny(name, const ['anti aging', 'antiaging', 'genclik'])) {
+    if (_containsAny(
+        name, const ['anti aging', 'antiaging', 'genclik', 'glow cilt'])) {
       return skinAntiAging;
     }
     if (_containsAny(name, const ['medikal', 'akne', 'leke'])) {
       return skinMedical;
     }
+    if (_containsAny(name, const ['spa', 'masaj'])) {
+      return GlowBookAssets.spa;
+    }
+    if (_containsAny(name, const ['incelme', 'sikilasma', 'selulit'])) {
+      return GlowBookAssets.bodyTreatment;
+    }
+    if (_containsAny(
+        name, const ['tirnak', 'oje', 'nail', 'manikur', 'pedikur'])) {
+      return GlowBookAssets.nails;
+    }
+    if (_containsAny(name, const ['kas', 'kirpik', 'lifting'])) {
+      return GlowBookAssets.lashes;
+    }
 
     if (service.contains('lazer')) {
-      if (packageId == 1) return laserThreeRegion;
-      if (packageId == 2) return laserFiveRegion;
-      return laserFullBody;
+      return laserThreeRegion;
     }
     if (service.contains('cilt')) {
-      if (packageId == 4) return skinHydrafacial;
-      if (packageId == 5) return skinAntiAging;
       return skinMedical;
     }
     return ServiceImageResolver.imageFor(serviceName);

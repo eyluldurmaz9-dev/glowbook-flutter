@@ -40,3 +40,10 @@ Resmî tam logo `assets/images/branding/glowbook-official-logo.png` olarak korun
 3. Ana ekran ve son uygulamalar görünümünde yeni merkez işareti doğrulayın.
 
 Paket kimliği yalnızca önbelleği aşmak amacıyla değiştirilmemiştir.
+## Fiziksel cihazdaki Flutter ikonu — kesin kök neden
+
+Aktif `main` manifesti `@mipmap/ic_launcher` ve `@mipmap/ic_launcher_round` kaynaklarını kullanır. mdpi–xxxhdpi PNG'leri ve Android 8+ `@drawable/ic_launcher_foreground` dosyası GlowBook merkez işaretidir; debug/profile manifestlerinde ikon override'ı, başka flavor veya `flutter_launcher_icons` kaynağı yoktur. Dolayısıyla fiziksel cihazdaki mavi Flutter logosu güncel kaynaklardan üretilemez. Cihazda önceki APK kurulu kalmıştır veya launcher paket ikonunu önbellekte tutmaktadır. `flutter clean` sonrası üretilen yeni release APK kaldırma/yeniden kurma ile test edilmelidir.
+
+Önce: cihazdaki eski APK → mavi varsayılan Flutter launcher ikonu.
+
+Sonra: güncel release APK → blush/rose-gold GlowBook merkez işareti; legacy, round ve adaptive kaynakların tamamı aynı kimliği kullanır.

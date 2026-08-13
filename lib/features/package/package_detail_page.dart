@@ -158,6 +158,7 @@ class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
         ),
         const SizedBox(height: 18),
         GlowCatalogImage(
+          key: Key('package_detail_hero_${package.id}'),
           semanticLabel: package.name,
           image: package.image,
           icon: Icons.inventory_2_outlined,

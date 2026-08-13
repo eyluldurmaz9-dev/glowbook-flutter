@@ -1,32 +1,33 @@
-# Asset Denetimi
+# GlowBook Görsel ve Asset Denetimi
 
-## Onaylı görseller
+## Aktif kaynaklar
 
-| Asset | Konu | Kullanım |
-|---|---|---|
-| `glowbook-hero.jpg` | Aydınlık salon iç mekânı | Hero ve nötr kategori fallback |
-| `glowbook-hydrafacial.jpg` | Hydrafacial yüz bakımı | Cilt bakımı hizmet/paketleri |
-| `glowbook-lashes.jpg` | Kaş/kirpik portresi | Kaş ve kirpik hizmet/paketleri |
-| `glowbook-nails.jpg` | Manikürlü eller | Tırnak/manikür kategorisi |
-| `glowbook-portrait-derya.jpg` | Personel/müşteri portresi | Referans portre |
-| `glowbook-portrait-elif.jpg` | Personel/müşteri portresi | Referans portre |
+- Marka: `assets/images/branding/glowbook-official-logo.png` ve platform için yazısız `glowbook-platform-icon.png`.
+- Marka varlıkları yalnızca logo, favicon ve işletim sistemi ikonlarında kullanılır.
+- Hizmet/paket içeriği `ServiceImageResolver` ve `PackageImageResolver` üzerinden çözülür.
+- `pubspec.yaml` bütün `assets/images/` ağacını bildirir; dosya adlarının büyük/küçük harfi diskteki yollarla aynıdır.
 
-Flutter'daki bu altı dosyanın SHA-256 değerleri Visual Asset Manager dosyalarıyla birebir aynıdır.
+## Düzeltilen kusurlar
 
-## Aktif katalog
+1. Lazer, Masaj/Spa ve Bölgesel İncelme aynı genel salon görseline düşüyordu; üç ayrı semantik asset eklendi.
+2. Tırnak hizmet/paket kayıtlarının üretimde boş görüntüsü vardı; nail assetine bağlandı.
+3. Saç ve Makyaj için genel salon yerine kategori fallbackleri eklendi.
+4. Landing hero fotoğrafı Hakkımızda bölümünde ikinci kez büyük boy gösteriliyordu; Hakkımızda görseli cilt bakımı fotoğrafıyla ayrıştırıldı.
+5. Paket resolver'ı eski örnek ID'leri varsayıyordu; 1–15 üretim paket ID'leri kesin eşlemeye alındı.
+6. Paket detay ekranı seçilen paketin `package.image` alanını zaten kullanıyordu; bu davranış regresyon testleriyle korunur.
 
-- Hizmetler: Cilt Bakımı, Lazer Epilasyon, Masaj ve Spa, Kaş ve Kirpik, Bölgesel İncelme.
-- Alt hizmetler: 20 adet; tam eşleme `SERVICE_IMAGE_MAPPING.md` içindedir.
-- Paketler: 10 adet; her paket servis kategorisinin görselini devralır.
-- Personel: GlowBook Admin, Defne Yılmaz, Mina Kaya, Selin Aydın. Referans depoda bu adlara doğrulanmış portre eşlemesi bulunmadığından yanlış portre atanmaz; baş harf avatarı korunur.
-- Logo: ayrı raster logo yoktur; referanstaki pembe yuvarlatılmış `Sparkles` marka işareti Flutter `GlowBrand/GlowMark` bileşenleriyle sürdürülür.
-- İllüstrasyon: yoktur.
-- İkonlar: referansta Lucide; Flutter'da anlam eşdeğeri Material ikonları merkezi bileşenlerde kullanılır.
+## Android ikon kök nedeni
 
-## Görsel kullanan ekranlar
+Depodaki `main` kaynak seti `@mipmap/ic_launcher` ve `@mipmap/ic_launcher_round` kullanır; legacy PNG'ler ile Android 8+ adaptive foreground GlowBook işaretidir. Başka flavor/source setinde launcher override bulunmamıştır ve `flutter_launcher_icons` yapılandırması yoktur. Bu nedenle fiziksel cihazdaki mavi Flutter logosu mevcut kaynak koddan değil, cihazda önceki APK'nın kurulu kalmasından veya launcher önbelleğinden gelir. Yeni release APK kaldırma/yeniden kurma sonrasında doğrulanmalıdır.
 
-Ana sayfa, karşılama/landing, hizmet listesi, hizmet detayı, randevu hizmet seçimi, paket listesi, paket detayı, hizmet detayındaki paketler ve admin hizmet önizlemesi denetlendi. Müşteri/çalışan dashboard kartları hizmet fotoğrafı göstermediği için yanlış eşleme yoktur.
+## Üretilen kategori assetleri
 
-## Eksik onaylı kategoriler
+Built-in image generation kullanıldı. İnsan bedeni göstermeyen, ürün/ortam odaklı son istemler; lazer cihazı, spa odası, vücut bakım cihazı, saç ekipmanı ve makyaj setini GlowBook'un blush/cream/rose-gold estetiğinde, logosuz ve yazısız üretir. Son dosyalar:
 
-Lazer, masaj/spa, bölgesel incelme, pedikür, saç ve makyaj. Bu kategorilerde konu dışı fotoğraf yerine nötr salon fallback kullanılır.
+- `assets/images/glowbook-laser.png`
+- `assets/images/glowbook-spa.png`
+- `assets/images/glowbook-body-treatment.png`
+- `assets/images/glowbook-hair.png`
+- `assets/images/glowbook-makeup.png`
+
+Tam üretim eşlemeleri `SERVICE_IMAGE_MAPPING.md` ve `PACKAGE_IMAGE_MAPPING.md` içindedir.
