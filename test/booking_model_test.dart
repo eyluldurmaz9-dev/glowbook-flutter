@@ -25,7 +25,7 @@ void main() {
     ]);
 
     expect(slots.single.employeeId, 'EMP-1');
-    expect(slots.single.availableTimes, ['09:00', '10:30']);
+    expect(slots.single.availableTimes, ['09:00']);
   });
 
   test(

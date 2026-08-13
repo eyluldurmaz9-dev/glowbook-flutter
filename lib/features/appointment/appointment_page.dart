@@ -188,10 +188,12 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           customerPackages: customerPackages,
           selectedOption: _option,
           selectedPackage: _customerPackage,
+          customerId: customerId,
           onOptionSelected: (option) => setState(() => _option = option),
           onPackageSelected: (package) =>
               setState(() => _customerPackage = package),
           onPackageCleared: () => setState(() => _customerPackage = null),
+          onPackagePurchase: (package) => _purchasePackage(customerId, package),
         );
       case 2:
         return _DateStep(
@@ -212,10 +214,11 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           slots: slots,
           selectedDate: _date,
           selectedTime: _time,
+          selectedEmployeeId: _slot?.employeeId,
           onTimeSelected: (choice) => setState(() {
             _date = choice.date;
             _time = choice.time;
-            _slot = null;
+            _slot = choice.slot;
           }),
           onRetry: _refreshSlots,
           onJoinWaitlist: () => _joinWaitlist(customerId),
@@ -408,6 +411,41 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     }
   }
 
+  Future<void> _purchasePackage(
+    int? customerId,
+    CatalogPackage package,
+  ) async {
+    if (customerId == null) {
+      GlowSnackBar.showError(context,
+          'Paket satın almak veya mevcut paketinizi kullanmak için giriş yapmanız gerekir.');
+      return;
+    }
+    if (package.id == null) return;
+    final confirmed = await GlowDialog.showConfirmation(
+      context,
+      title: 'Paketi satın al',
+      message:
+          '${package.name} demo/rezervasyon satın alımı olarak hesabınıza eklenecek. Gerçek ödeme alınmayacaktır.',
+      confirmLabel: 'Satın Al',
+    );
+    if (confirmed != true) return;
+    try {
+      final response = await ref
+          .read(glowBackendServiceProvider)
+          .purchasePackage(customerId, package.id!);
+      ref.invalidate(customerPackagesProvider(customerId));
+      if (!mounted) return;
+      setState(() {
+        _customerPackage = CustomerPackageOption.fromJson(response);
+      });
+      GlowSnackBar.showSuccess(
+          context, 'Paket eklendi. Randevu seçimlerin korundu.');
+    } catch (error) {
+      if (!mounted) return;
+      GlowSnackBar.showError(context, bookingErrorMessage(error)!);
+    }
+  }
+
   Future<void> _joinWaitlist(int? customerId) async {
     if (_joiningWaitlist) return;
     final serviceId = _service?.id;
@@ -593,6 +631,8 @@ class _OptionAndPackageStep extends StatelessWidget {
     required this.onOptionSelected,
     required this.onPackageSelected,
     required this.onPackageCleared,
+    required this.customerId,
+    required this.onPackagePurchase,
   });
 
   final AsyncValue<List<Map<String, dynamic>>> options;
@@ -603,6 +643,8 @@ class _OptionAndPackageStep extends StatelessWidget {
   final ValueChanged<CatalogOption> onOptionSelected;
   final ValueChanged<CustomerPackageOption> onPackageSelected;
   final VoidCallback onPackageCleared;
+  final int? customerId;
+  final ValueChanged<CatalogPackage> onPackagePurchase;
 
   @override
   Widget build(BuildContext context) {
@@ -638,15 +680,8 @@ class _OptionAndPackageStep extends StatelessWidget {
           },
         ),
         const SizedBox(height: 14),
-        Text('Paket kullanımı', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 10),
-        _SelectableTile(
-          title: 'Paket kullanmadan devam et',
-          subtitle: 'Randevu seçilen alt hizmet fiyatıyla oluşturulur.',
-          icon: Icons.block_outlined,
-          selected: selectedPackage == null,
-          onTap: onPackageCleared,
-        ),
+        Text('Paket seçenekleri',
+            style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 10),
         servicePackages.when(
           loading: () => const GlowSkeleton(height: 72),
@@ -660,16 +695,22 @@ class _OptionAndPackageStep extends StatelessWidget {
               final usable = mapCustomerPackageOptions(customerItems)
                   .where((item) => item.canUseFor(servicePackageModels))
                   .toList();
-              if (usable.isEmpty) {
-                return const GlowEmptyState(
-                  title: 'Kullanılabilir paket yok',
-                  message:
-                      'Backend randevuda yalnızca satın alınmış müşteri paketini kabul eder.',
-                  icon: Icons.inventory_2_outlined,
-                );
-              }
+              final ownedIds = usable.map((item) => item.packageId).toSet();
+              final purchasable = servicePackageModels
+                  .where(
+                      (item) => item.id != null && !ownedIds.contains(item.id))
+                  .toList();
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text('Mevcut paketlerim',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  if (usable.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Text(
+                          'Bu hizmet için henüz satın aldığınız bir paket yok.'),
+                    ),
                   for (final item in usable) ...[
                     _SelectableTile(
                       title: item.name,
@@ -682,6 +723,39 @@ class _OptionAndPackageStep extends StatelessWidget {
                           : () => onPackageSelected(item),
                     ),
                     const SizedBox(height: 10),
+                  ],
+                  Text('Bu hizmet için paketler',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  if (purchasable.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Text('Bu hizmet için paket bulunmuyor.'),
+                    ),
+                  for (final item in purchasable) ...[
+                    _SelectableTile(
+                      title: item.name,
+                      subtitle: _purchasablePackageText(item),
+                      icon: Icons.shopping_bag_outlined,
+                      image: item.image,
+                      selected: false,
+                      onTap: () => onPackagePurchase(item),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  _SelectableTile(
+                    title: 'Tek seans olarak devam et',
+                    subtitle:
+                        'Randevu seçilen alt hizmet fiyatıyla oluşturulur.',
+                    icon: Icons.event_available_outlined,
+                    selected: selectedPackage == null,
+                    onTap: onPackageCleared,
+                  ),
+                  if (customerId == null &&
+                      servicePackageModels.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Paket satın almak veya mevcut paketinizi kullanmak için giriş yapmanız gerekir.',
+                    ),
                   ],
                 ],
               );
@@ -700,6 +774,9 @@ class _OptionAndPackageStep extends StatelessWidget {
     }
     return 'Bu randevuda 1 seans kullanılır • Kullanılan $used/${item.totalSession}, kalan $remaining';
   }
+
+  String _purchasablePackageText(CatalogPackage item) =>
+      '${item.totalSession ?? '-'} seans • ${item.priceText ?? 'Fiyat belirtilmedi'} • ${item.validityDays ?? 365} gün geçerli${item.description == null ? '' : '\n${item.description}'}';
 }
 
 class _DateStep extends StatelessWidget {
@@ -800,6 +877,7 @@ class _TimeStep extends StatelessWidget {
     required this.slots,
     required this.selectedDate,
     required this.selectedTime,
+    required this.selectedEmployeeId,
     required this.onTimeSelected,
     required this.onRetry,
     required this.onJoinWaitlist,
@@ -809,6 +887,7 @@ class _TimeStep extends StatelessWidget {
   final AsyncValue<List<Map<String, dynamic>>>? slots;
   final DateTime selectedDate;
   final String? selectedTime;
+  final String? selectedEmployeeId;
   final ValueChanged<BookingTimeChoice> onTimeSelected;
   final VoidCallback onRetry;
   final VoidCallback onJoinWaitlist;
@@ -851,9 +930,10 @@ class _TimeStep extends StatelessWidget {
             for (final choice in choices)
               FilterChip(
                 label: Text(
-                  '${BookingDateUtils.formatDate(choice.date)}  ${choice.time}  (${choice.employeeCount} uzman)',
+                  '${BookingDateUtils.formatDate(choice.date)}  ${choice.time} — ${choice.slot.employeeName}',
                 ),
                 selected: selectedTime == choice.time &&
+                    choice.slot.employeeId == selectedEmployeeId &&
                     BookingDateUtils.formatDate(selectedDate) ==
                         BookingDateUtils.formatDate(choice.date),
                 onSelected: (_) => onTimeSelected(choice),
@@ -865,26 +945,20 @@ class _TimeStep extends StatelessWidget {
   }
 
   List<BookingTimeChoice> _bookingChoices(List<BookingSlot> slots) {
-    final counts = <String, int>{};
+    final choices = <BookingTimeChoice>[];
     for (final slot in slots) {
-      final date = BookingDateUtils.formatDate(slot.date);
       for (final time in slot.availableTimes) {
-        final key = '$date|$time';
-        counts[key] = (counts[key] ?? 0) + 1;
+        choices.add(BookingTimeChoice(date: slot.date, time: time, slot: slot));
       }
     }
-    final choices = counts.entries.map((entry) {
-      final parts = entry.key.split('|');
-      return BookingTimeChoice(
-        date: DateTime.parse(parts.first),
-        time: parts.last,
-        employeeCount: entry.value,
-      );
-    }).toList()
-      ..sort((a, b) {
-        final dateCompare = a.date.compareTo(b.date);
-        return dateCompare != 0 ? dateCompare : a.time.compareTo(b.time);
-      });
+    choices.sort((a, b) {
+      final dateCompare = a.date.compareTo(b.date);
+      if (dateCompare != 0) return dateCompare;
+      final timeCompare = a.time.compareTo(b.time);
+      return timeCompare != 0
+          ? timeCompare
+          : a.slot.employeeName.compareTo(b.slot.employeeName);
+    });
     return choices;
   }
 }
@@ -893,12 +967,12 @@ class BookingTimeChoice {
   const BookingTimeChoice({
     required this.date,
     required this.time,
-    required this.employeeCount,
+    required this.slot,
   });
 
   final DateTime date;
   final String time;
-  final int employeeCount;
+  final BookingSlot slot;
 }
 
 class _EmployeeStep extends StatelessWidget {

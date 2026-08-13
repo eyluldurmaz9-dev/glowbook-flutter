@@ -10,6 +10,41 @@ import 'package:glowbook_flutter/features/appointment/appointment_page.dart';
 import 'package:glowbook_flutter/providers/app_providers.dart';
 
 void main() {
+  testWidgets('Tam saatler her gerçek personel için ayrı gösterilir',
+      (tester) async {
+    await _pumpBooking(
+      tester,
+      backend: _FakeGlowBackendService(),
+      slots: const [
+        {
+          'employeeId': 'EMP-1',
+          'employeeName': 'Elif Yılmaz',
+          'availableTimes': ['10:00', '10:30'],
+        },
+        {
+          'employeeId': 'EMP-2',
+          'employeeName': 'Eylem Ceylan',
+          'availableTimes': ['10:00'],
+        },
+      ],
+    );
+    await _tapText(tester, 'Hydrafacial');
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Devam', last: true);
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Cilt Bakımı');
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Devam', last: true);
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Devam', last: true);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('10:30'), findsNothing);
+    expect(find.textContaining('Elif Yılmaz'), findsOneWidget);
+    expect(find.textContaining('Eylem Ceylan'), findsOneWidget);
+    expect(find.textContaining('uzman'), findsNothing);
+  });
+
   testWidgets('Tam başarılı randevu akışı backend sonucu gösterir',
       (tester) async {
     final backend = _FakeGlowBackendService();

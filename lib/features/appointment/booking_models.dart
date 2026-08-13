@@ -22,6 +22,7 @@ class BookingSlot {
       availableTimes: (json['availableTimes'] as List? ?? const [])
           .map((item) => BookingDateUtils.normalizeTime(item))
           .whereType<String>()
+          .where(BookingDateUtils.isFullHour)
           .toList(growable: false),
     );
   }
@@ -162,6 +163,11 @@ class BookingDateUtils {
     if (hour == null || minute == null) return text;
     return '${hour.toString().padLeft(2, '0')}:'
         '${minute.toString().padLeft(2, '0')}';
+  }
+
+  static bool isFullHour(String value) {
+    final parts = value.split(':');
+    return parts.length >= 2 && int.tryParse(parts[1]) == 0;
   }
 
   static String dayLabel(DateTime date) {
