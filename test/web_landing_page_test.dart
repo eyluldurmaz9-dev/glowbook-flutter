@@ -19,6 +19,7 @@ void main() {
     expect(find.text('İletişim'), findsWidgets);
     expect(find.text('Giriş Yap'), findsWidgets);
     expect(find.byKey(const Key('web_nav_Paketler')), findsNothing);
+    expect(find.byKey(const Key('web_desktop_footer')), findsOneWidget);
     expect(find.text('Gerçek Cilt Bakımı'), findsOneWidget);
     expect(find.text('Hydrafacial Premium'), findsOneWidget);
     expect(find.textContaining('6 seans'), findsOneWidget);
@@ -57,6 +58,8 @@ void main() {
     await _pumpLanding(tester, const Size(390, 844));
 
     expect(find.byKey(const Key('web_mobile_menu')), findsOneWidget);
+    expect(find.text('Bize ulaşın'), findsOneWidget);
+    expect(find.byKey(const Key('web_desktop_footer')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

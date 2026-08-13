@@ -75,14 +75,19 @@ class _WebLandingPageState extends ConsumerState<WebLandingPage> {
               ),
               _CallToAction(key: _booking),
               _Contact(key: _contact),
-              _Footer(links: [
-                _FooterLink('Ana Sayfa', _home),
-                _FooterLink('Hakkımızda', _about),
-                _FooterLink('Hizmetler', _services),
-                _FooterLink('Paketler', _packages),
-                _FooterLink('Randevu Al', _booking),
-                _FooterLink('İletişim', _contact),
-              ], onNavigate: _scrollTo),
+              if (MediaQuery.sizeOf(context).width >= 1060)
+                _Footer(
+                  key: const Key('web_desktop_footer'),
+                  links: [
+                    _FooterLink('Ana Sayfa', _home),
+                    _FooterLink('Hakkımızda', _about),
+                    _FooterLink('Hizmetler', _services),
+                    _FooterLink('Paketler', _packages),
+                    _FooterLink('Randevu Al', _booking),
+                    _FooterLink('İletişim', _contact),
+                  ],
+                  onNavigate: _scrollTo,
+                ),
             ]),
           ),
         ),
@@ -523,7 +528,7 @@ class _Contact extends StatelessWidget {
 }
 
 class _Footer extends StatelessWidget {
-  const _Footer({required this.links, required this.onNavigate});
+  const _Footer({super.key, required this.links, required this.onNavigate});
   final List<_FooterLink> links;
   final ValueChanged<GlobalKey> onNavigate;
   @override
