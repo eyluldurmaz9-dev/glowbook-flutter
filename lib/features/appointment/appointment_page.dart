@@ -13,6 +13,11 @@ import 'booking_models.dart';
 /// much the customer already chose before entering — see [_AppointmentPageState._stepKinds].
 enum BookingStepKind { service, option, employee, date, time, summary }
 
+/// Explicit submission outcomes for the final confirmation. Exactly one of
+/// [success] or [failure] is ever reached per submission — never both — which
+/// is what keeps a stale success state from coexisting with a later conflict.
+enum _BookingSubmission { idle, submitting, success, failure }
+
 class AppointmentPage extends ConsumerStatefulWidget {
   const AppointmentPage({super.key, this.packageContext});
 
@@ -43,9 +48,11 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
   DateTime _date = BookingDateUtils.today().add(const Duration(days: 1));
   String? _time;
   BookingSlot? _slot;
-  bool _submitting = false;
+  _BookingSubmission _submission = _BookingSubmission.idle;
   bool _joiningWaitlist = false;
   BookingResult? _result;
+
+  bool get _submitting => _submission == _BookingSubmission.submitting;
 
   @override
   void initState() {
@@ -483,7 +490,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
   }
 
   Future<void> _confirmAndSubmit(int? customerId) async {
-    if (_submitting) return;
+    if (_submission == _BookingSubmission.submitting) return;
     if (customerId == null &&
         !(_guestFormKey.currentState?.validate() ?? false)) {
       GlowSnackBar.showError(context, 'Misafir bilgilerini tamamla.');
@@ -504,6 +511,11 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
   }
 
   Future<void> _submitAppointment(int? customerId) async {
+    // A double tap that lands here while the previous submission is still in
+    // flight must not fire a second request. GlowButton's `loading` state
+    // already disables the confirm button for the same reason.
+    if (_submission == _BookingSubmission.submitting) return;
+
     final serviceId = _service?.id;
     final optionId = _option?.id;
     final employeeId = _slot?.employeeId;
@@ -516,7 +528,13 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
       return;
     }
 
-    setState(() => _submitting = true);
+    setState(() => _submission = _BookingSubmission.submitting);
+
+    // Only the request itself is a candidate for "booking failed" — anything
+    // that happens after a genuine backend success (navigation, resetting
+    // wizard state) must never be reinterpreted as a failed booking.
+    final packageContext = _packageContext;
+    late final Map<String, dynamic> response;
     try {
       final query = AvailableSlotsQuery(
         serviceId: serviceId,
@@ -533,8 +551,6 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
         throw Exception('Selected slot is not available');
       }
 
-      final packageContext = _packageContext;
-      final Map<String, dynamic> response;
       if (packageContext != null &&
           packageContext.needsPurchase &&
           customerId != null) {
@@ -570,32 +586,9 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           'appointmentTime': time,
         });
       }
-
-      if (customerId != null) {
-        ref.invalidate(customerUpcomingAppointmentsProvider(customerId));
-        ref.invalidate(customerPastAppointmentsProvider(customerId));
-        ref.invalidate(customerPackagesProvider(customerId));
-      }
-      if (!mounted) return;
-      setState(() {
-        // The combined call wraps the appointment next to the updated package.
-        final appointmentJson = response['appointment'];
-        _result = BookingResult.appointment(
-          appointmentJson is Map<String, dynamic> ? appointmentJson : response,
-        );
-        // The package is now owned; a retry must not buy it again.
-        if (packageContext != null && packageContext.needsPurchase) {
-          _packageContext = null;
-        }
-      });
-      GlowSnackBar.showSuccess(
-        context,
-        packageContext?.needsPurchase == true
-            ? 'Paketin eklendi ve ilk randevun oluşturuldu.'
-            : 'Randevun başarıyla oluşturuldu.',
-      );
     } catch (error) {
       if (!mounted) return;
+      setState(() => _submission = _BookingSubmission.failure);
       if (isStaleSlotError(error)) {
         // Send the customer back to the time step, keeping package, service,
         // employee and date selections intact.
@@ -610,9 +603,117 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
         context,
         bookingErrorMessage(error) ?? 'Randevu oluşturulamadı.',
       );
-    } finally {
-      if (mounted) setState(() => _submitting = false);
+      setState(() => _submission = _BookingSubmission.idle);
+      return;
     }
+
+    // The backend confirmed the booking. From here on this is exactly one
+    // success outcome — no later step may downgrade it back to a failure.
+    if (!mounted) return;
+    setState(() => _submission = _BookingSubmission.success);
+    await _completeBookingSuccess(
+      customerId: customerId,
+      response: response,
+      packageContext: packageContext,
+    );
+  }
+
+  /// Runs exactly once, right after the backend confirms the booking. Shows a
+  /// short toast, refreshes the customer's appointment/package state so the
+  /// new booking is visible without a manual refresh, clears every temporary
+  /// wizard selection, and leaves the booking wizard entirely — a registered
+  /// customer lands on Randevularım, a guest sees a concise confirmation and
+  /// is sent to a page that does not require an account.
+  Future<void> _completeBookingSuccess({
+    required int? customerId,
+    required Map<String, dynamic> response,
+    required PackageBookingContext? packageContext,
+  }) async {
+    if (customerId != null) {
+      ref.invalidate(customerUpcomingAppointmentsProvider(customerId));
+      ref.invalidate(customerPastAppointmentsProvider(customerId));
+      ref.invalidate(customerPackagesProvider(customerId));
+    }
+    if (!mounted) return;
+
+    final appointmentJson = response['appointment'];
+    final result = BookingResult.appointment(
+      appointmentJson is Map<String, dynamic> ? appointmentJson : response,
+    );
+
+    GlowSnackBar.showSuccess(
+      context,
+      packageContext?.needsPurchase == true
+          ? 'Paketin eklendi ve ilk randevun oluşturuldu.'
+          : 'Randevun başarıyla oluşturuldu.',
+    );
+
+    _resetBookingState();
+    if (!mounted) return;
+
+    if (customerId != null) {
+      AppNavigation.go(context, AppRoutes.profile);
+      return;
+    }
+
+    // Guests have no persistent Randevularım account page — show a concise
+    // confirmation instead, then land on a destination that needs no login.
+    await _showGuestBookingConfirmation(result);
+    if (!mounted) return;
+    AppNavigation.go(context, AppRoutes.home);
+  }
+
+  Future<void> _showGuestBookingConfirmation(BookingResult result) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Randevun oluşturuldu'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SummaryRow(label: 'Hizmet', value: result.serviceName ?? '-'),
+            _SummaryRow(label: 'Alt hizmet', value: result.optionName ?? '-'),
+            _SummaryRow(label: 'Personel', value: result.employeeName ?? '-'),
+            _SummaryRow(label: 'Tarih', value: result.date ?? '-'),
+            _SummaryRow(label: 'Saat', value: result.time ?? '-'),
+          ],
+        ),
+        actions: [
+          GlowButton(
+            label: 'Tamam',
+            onPressed: () => Navigator.of(dialogContext).pop(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Clears every transient wizard selection. Only ever called after the
+  /// backend has confirmed success — a failed request must leave the
+  /// customer's in-progress selections untouched so they can simply retry.
+  void _resetBookingState() {
+    if (!mounted) return;
+    final tomorrow = BookingDateUtils.today().add(const Duration(days: 1));
+    setState(() {
+      _step = 0;
+      _packageContext = null;
+      _service = null;
+      _option = null;
+      _customerPackage = null;
+      _packageEmployeeId = null;
+      _packageEmployeeName = null;
+      _candidateDates = [tomorrow];
+      _date = tomorrow;
+      _time = null;
+      _slot = null;
+      _result = null;
+      _submission = _BookingSubmission.idle;
+    });
+    _guestNameController.clear();
+    _guestSurnameController.clear();
+    _guestPhoneController.clear();
   }
 
   Future<void> _purchasePackage(

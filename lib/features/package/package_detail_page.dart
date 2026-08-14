@@ -74,10 +74,12 @@ class _PackageDetailContent extends ConsumerStatefulWidget {
 }
 
 class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
-  /// Continues into the booking wizard carrying the package (and therefore the
-  /// service) forward. The purchase itself happens together with the first
-  /// appointment, so nothing is charged without a booking.
-  Future<void> _continueToBooking() async {
+  /// Continues straight into the booking wizard carrying the package (and
+  /// therefore the service) forward — the customer already deliberately chose
+  /// both by reaching this screen, so no extra "continue?" confirmation is
+  /// needed. The purchase itself happens together with the first appointment,
+  /// so nothing is charged without a booking.
+  void _continueToBooking() {
     final customerId =
         ref.read(authControllerProvider).asData?.value?.customerId;
     final packageId = widget.package.id;
@@ -94,30 +96,6 @@ class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
       GlowSnackBar.showError(context, 'Paket bilgisi eksik.');
       return;
     }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Paketinle devam et'),
-        content: Text(
-          '${widget.package.name}\n\n'
-          '${widget.package.totalSession ?? '-'} seans • ${widget.package.priceText ?? 'Fiyat belirtilmedi'}\n'
-          '${widget.package.validityDays ?? 365} gün geçerlilik\n\n'
-          'Sırada personel, tarih ve saat seçimi var. Hizmetini tekrar seçmene gerek yok.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Vazgeç'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Devam'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
 
     final bookingContext = PackageBookingContext(
       packageId: packageId,

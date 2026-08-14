@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:glowbook_flutter/core/api/api_client.dart';
+import 'package:glowbook_flutter/core/routes/app_routes.dart';
 import 'package:glowbook_flutter/core/services/api_service.dart';
 import 'package:glowbook_flutter/core/services/glow_backend_service.dart';
 import 'package:glowbook_flutter/core/storage/secure_storage_service.dart';
 import 'package:glowbook_flutter/core/theme/app_theme.dart';
 import 'package:glowbook_flutter/features/appointment/appointment_page.dart';
 import 'package:glowbook_flutter/features/appointment/booking_models.dart';
+import 'package:glowbook_flutter/features/profile/profile_page.dart';
 import 'package:glowbook_flutter/providers/app_providers.dart';
 
 /// Package booking must carry the already chosen service forward and go
@@ -92,10 +95,11 @@ void main() {
     expect(find.textContaining('15:30'), findsNothing);
   });
 
-  testWidgets('Paket onayı tek çağrıda satın alma ve ilk randevu oluşturur',
+  testWidgets(
+      'Paket onayı tek çağrıda satın alma ve ilk randevu oluşturur, sonra Randevularım açılır',
       (tester) async {
     final backend = _FakeBackend();
-    await _pumpPackageBooking(tester, backend: backend);
+    final router = await _pumpPackageBooking(tester, backend: backend);
 
     await _completePackageSelections(tester);
     await _tapText(tester, 'Onayla', last: true);
@@ -110,7 +114,14 @@ void main() {
     expect(backend.lastPackageBooking?['appointmentTime'], '14:00');
     // The service is never re-sent: the backend derives it from the package.
     expect(backend.lastPackageBooking?.containsKey('serviceId'), isFalse);
-    expect(find.text('Randevun oluşturuldu'), findsOneWidget);
+
+    // The customer left the booking wizard and landed on Randevularım.
+    expect(router.location, AppRoutes.profile);
+    expect(find.text('Paketinle randevu al'), findsNothing);
+    expect(find.text('Randevu özeti'), findsNothing);
+    expect(find.text('Randevularım'), findsOneWidget);
+    expect(find.text('Yaklaşan Randevular'), findsOneWidget);
+    expect(find.text('Lazer Epilasyon'), findsWidgets);
   });
 
   testWidgets('Paket akışında teknik terimler kullanıcıya gösterilmez',
@@ -220,7 +231,10 @@ Future<void> _completePackageSelections(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _pumpPackageBooking(
+/// Wraps the package booking wizard with the same real [GoRouter]
+/// destination (Randevularım/profile) the production app uses, and returns
+/// the router so tests can assert where a successful booking actually landed.
+Future<GoRouter> _pumpPackageBooking(
   WidgetTester tester, {
   required _FakeBackend backend,
   PackageBookingContext? packageContext,
@@ -229,6 +243,30 @@ Future<void> _pumpPackageBooking(
   final slotDate = '${slotDay.year.toString().padLeft(4, '0')}-'
       '${slotDay.month.toString().padLeft(2, '0')}-'
       '${slotDay.day.toString().padLeft(2, '0')}';
+
+  final router = GoRouter(
+    initialLocation: AppRoutes.appointment,
+    routes: [
+      GoRoute(
+        path: AppRoutes.appointment,
+        builder: (context, state) => AppointmentPage(
+          packageContext: packageContext ??
+              const PackageBookingContext(
+                packageId: 201,
+                serviceId: 2,
+                optionId: 22,
+                packageName: '10 Seans Lazer',
+                serviceName: 'Lazer Epilasyon',
+                totalSession: 10,
+              ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.profile,
+        builder: (context, state) => const ProfilePage(),
+      ),
+    ],
+  );
 
   await tester.pumpWidget(
     ProviderScope(
@@ -247,7 +285,8 @@ Future<void> _pumpPackageBooking(
           ],
         ),
         servicePackagesProvider.overrideWith((ref, serviceId) async => const []),
-        customerPackagesProvider.overrideWith((ref, customerId) async => const []),
+        customerPackagesProvider
+            .overrideWith((ref, customerId) async => backend.packages),
         employeesByServiceOptionProvider.overrideWith(
           (ref, query) async => const [
             {'employeeId': 'EMP-2', 'employeeName': 'Eylem Ceylan'},
@@ -270,28 +309,29 @@ Future<void> _pumpPackageBooking(
             },
           ],
         ),
-        customerUpcomingAppointmentsProvider
-            .overrideWith((ref, customerId) async => const []),
+        customerUpcomingAppointmentsProvider.overrideWith(
+          (ref, customerId) async => backend.upcomingAppointments,
+        ),
         customerPastAppointmentsProvider
             .overrideWith((ref, customerId) async => const []),
-      ],
-      child: MaterialApp(
-        theme: AppTheme.lightTheme,
-        home: AppointmentPage(
-          packageContext: packageContext ??
-              const PackageBookingContext(
-                packageId: 201,
-                serviceId: 2,
-                optionId: 22,
-                packageName: '10 Seans Lazer',
-                serviceName: 'Lazer Epilasyon',
-                totalSession: 10,
-              ),
+        profileProvider.overrideWith(
+          (ref) async => const {
+            'customerId': 12,
+            'firstName': 'Derya',
+            'lastName': 'Yılmaz',
+            'phone': '05551110000',
+            'email': 'derya@glowbook.test',
+          },
         ),
+      ],
+      child: MaterialApp.router(
+        theme: AppTheme.lightTheme,
+        routerConfig: router,
       ),
     ),
   );
   await tester.pumpAndSettle();
+  return router;
 }
 
 Future<void> _tapText(
@@ -334,6 +374,12 @@ class _FakeBackend extends GlowBackendService {
   int createAppointmentCount = 0;
   Map<String, dynamic>? lastPackageBooking;
 
+  /// Tracks what a real backend would now return for the customer's upcoming
+  /// appointments, so navigating to Randevularım after a successful package
+  /// booking shows the new appointment without a manual refresh.
+  final List<Map<String, dynamic>> upcomingAppointments = [];
+  final List<Map<String, dynamic>> packages = const [];
+
   @override
   Future<Map<String, dynamic>> purchasePackageWithFirstAppointment({
     required int customerId,
@@ -353,6 +399,21 @@ class _FakeBackend extends GlowBackendService {
       'appointmentTime': appointmentTime,
     };
     if (bookingError != null) throw bookingError!;
+    final appointment = {
+      'appointmentId': 42,
+      'customerId': customerId,
+      'employeeId': employeeId,
+      'employeeName': 'Eylem Ceylan',
+      'serviceId': 2,
+      'serviceName': 'Lazer Epilasyon',
+      'optionId': optionId,
+      'optionName': '5 Bolge',
+      'appointmentDate': appointmentDate,
+      'appointmentTime': appointmentTime,
+      'price': '1650',
+      'status': 'PENDING',
+    };
+    upcomingAppointments.add(appointment);
     return {
       'customerPackage': {
         'customerPackageId': 5,
@@ -364,20 +425,7 @@ class _FakeBackend extends GlowBackendService {
         'remainingSession': 9,
         'active': true,
       },
-      'appointment': {
-        'appointmentId': 42,
-        'customerId': customerId,
-        'employeeId': employeeId,
-        'employeeName': 'Eylem Ceylan',
-        'serviceId': 2,
-        'serviceName': 'Lazer Epilasyon',
-        'optionId': optionId,
-        'optionName': '5 Bolge',
-        'appointmentDate': appointmentDate,
-        'appointmentTime': appointmentTime,
-        'price': '1650',
-        'status': 'PENDING',
-      },
+      'appointment': appointment,
     };
   }
 

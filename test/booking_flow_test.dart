@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:glowbook_flutter/core/api/api_client.dart';
+import 'package:glowbook_flutter/core/routes/app_routes.dart';
 import 'package:glowbook_flutter/core/services/api_service.dart';
 import 'package:glowbook_flutter/core/services/glow_backend_service.dart';
 import 'package:glowbook_flutter/core/theme/app_theme.dart';
 import 'package:glowbook_flutter/core/storage/secure_storage_service.dart';
 import 'package:glowbook_flutter/features/appointment/appointment_page.dart';
+import 'package:glowbook_flutter/features/profile/profile_page.dart';
 import 'package:glowbook_flutter/providers/app_providers.dart';
 
 void main() {
@@ -45,10 +48,11 @@ void main() {
     expect(find.textContaining('uzman'), findsNothing);
   });
 
-  testWidgets('Tam başarılı randevu akışı backend sonucu gösterir',
+  testWidgets(
+      'Tam başarılı randevu akışı sonrası Randevu oluştur ekranından çıkılır',
       (tester) async {
     final backend = _FakeGlowBackendService();
-    await _pumpBooking(tester, backend: backend);
+    final router = await _pumpBooking(tester, backend: backend);
 
     await _completeSelections(tester);
     await _tapText(tester, 'Onayla', last: true);
@@ -56,9 +60,15 @@ void main() {
     await _tapText(tester, 'Onayla', last: true);
     await tester.pumpAndSettle();
 
-    expect(find.text('Randevun oluşturuldu'), findsOneWidget);
-    expect(find.text('PENDING'), findsOneWidget);
     expect(backend.createCount, 1);
+    // The customer is no longer inside the booking wizard.
+    expect(router.location, AppRoutes.profile);
+    expect(find.text('Randevu oluştur'), findsNothing);
+    expect(find.text('Personel seçimi'), findsNothing);
+    // The new appointment is visible on Randevularım without a manual refresh.
+    expect(find.text('Randevularım'), findsOneWidget);
+    expect(find.text('Yaklaşan Randevular'), findsOneWidget);
+    expect(find.text('Hydrafacial'), findsWidgets);
   });
 
   testWidgets('Slot doldu hatası kullanıcıya Türkçe gösterilir',
@@ -168,7 +178,11 @@ void main() {
   });
 }
 
-Future<void> _pumpBooking(
+/// Wraps [AppointmentPage] with the same real [GoRouter] destinations the
+/// production app uses (Randevularım/profile), so a successful booking's
+/// navigation is exercised for real instead of being stubbed out — and
+/// returns the router so tests can assert on where it actually landed.
+Future<GoRouter> _pumpBooking(
   WidgetTester tester, {
   required _FakeGlowBackendService backend,
   List<Map<String, dynamic>>? slots,
@@ -188,6 +202,25 @@ Future<void> _pumpBooking(
           ])
       .map((slot) => {'appointmentDate': slotDate, ...slot})
       .toList();
+  final router = GoRouter(
+    initialLocation: AppRoutes.appointment,
+    routes: [
+      GoRoute(
+        path: AppRoutes.appointment,
+        builder: (context, state) => const AppointmentPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.profile,
+        builder: (context, state) => const ProfilePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.home,
+        builder: (context, state) => const Scaffold(
+          body: Center(child: Text('HOME_ROUTE_MARKER')),
+        ),
+      ),
+    ],
+  );
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -217,20 +250,32 @@ Future<void> _pumpBooking(
         servicePackagesProvider
             .overrideWith((ref, serviceId) async => const []),
         customerPackagesProvider
-            .overrideWith((ref, customerId) async => const []),
+            .overrideWith((ref, customerId) async => backend.packages),
         availableSlotsProvider
             .overrideWith((ref, query) async => effectiveSlots),
         customerUpcomingAppointmentsProvider.overrideWith(
-          (ref, customerId) async => const [],
+          (ref, customerId) async => backend.upcomingAppointments,
+        ),
+        customerPastAppointmentsProvider
+            .overrideWith((ref, customerId) async => const []),
+        profileProvider.overrideWith(
+          (ref) async => const {
+            'customerId': 12,
+            'firstName': 'Derya',
+            'lastName': 'Yılmaz',
+            'phone': '05551110000',
+            'email': 'derya@glowbook.test',
+          },
         ),
       ],
-      child: MaterialApp(
+      child: MaterialApp.router(
         theme: AppTheme.lightTheme,
-        home: const AppointmentPage(),
+        routerConfig: router,
       ),
     ),
   );
   await tester.pumpAndSettle();
+  return router;
 }
 
 Future<void> _completeSelections(WidgetTester tester) async {
@@ -293,12 +338,18 @@ class _FakeGlowBackendService extends GlowBackendService {
   int createCount = 0;
   int waitlistCount = 0;
 
+  /// Tracks what a real backend would now return for the customer's upcoming
+  /// appointments, so provider overrides reading this list after an
+  /// invalidate prove the new booking is visible without a manual refresh.
+  final List<Map<String, dynamic>> upcomingAppointments = [];
+  final List<Map<String, dynamic>> packages = const [];
+
   @override
   Future<Map<String, dynamic>> createAppointment(
       Map<String, dynamic> payload) async {
     createCount++;
     if (createError != null) throw createError!;
-    return {
+    final appointment = {
       'appointmentId': 99,
       'customerId': payload['customerId'],
       'employeeId': payload['employeeId'],
@@ -312,6 +363,8 @@ class _FakeGlowBackendService extends GlowBackendService {
       'price': '900',
       'status': 'PENDING',
     };
+    upcomingAppointments.add(appointment);
+    return appointment;
   }
 
   @override

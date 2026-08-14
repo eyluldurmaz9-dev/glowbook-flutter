@@ -452,18 +452,25 @@ class GlowSnackBar {
     required IconData icon,
     bool isError = false,
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: isError ? AppColors.error : AppColors.primaryText,
-        content: Row(
-          children: [
-            Icon(icon, color: AppColors.white, size: 20),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(child: Text(message)),
-          ],
-        ),
+    final snackBar = SnackBar(
+      backgroundColor: isError ? AppColors.error : AppColors.primaryText,
+      content: Row(
+        children: [
+          Icon(icon, color: AppColors.white, size: 20),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(child: Text(message)),
+        ],
       ),
     );
+    // Prefer the app-level messenger so a toast fired right before navigating
+    // away (e.g. booking success) survives the old page's Scaffold being torn
+    // down. Falls back to the local messenger for tests that skip the app root.
+    final messenger = appScaffoldMessengerKey.currentState;
+    if (messenger != null) {
+      messenger.showSnackBar(snackBar);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    }
   }
 }
 

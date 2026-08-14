@@ -1,7 +1,13 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../routes/app_routes.dart';
+
+/// Lives above every routed page (attached to [MaterialApp.scaffoldMessengerKey]),
+/// so a SnackBar shown right before navigating away — e.g. a booking success
+/// toast — keeps displaying instead of being torn down with the old page's Scaffold.
+final GlobalKey<ScaffoldMessengerState> appScaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 class AppNavigation {
   AppNavigation._();

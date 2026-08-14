@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
+import 'core/navigation/app_navigation.dart';
 import 'core/routes/app_router.dart';
 
 class GlowBookApp extends ConsumerWidget {
@@ -13,6 +14,7 @@ class GlowBookApp extends ConsumerWidget {
       title: AppConstants.appName,
       theme: AppTheme.lightTheme,
       routerConfig: appRouter,
+      scaffoldMessengerKey: appScaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
     );
   }
