@@ -461,14 +461,17 @@ class _PackageList extends StatelessWidget {
     );
   }
 
+  /// Uses the backend's derived counts so a planned appointment is never
+  /// reported as already used.
   String _packageSessionText(Map<String, dynamic> item) {
     final total = _intValue(item['totalSession']);
     final remaining = _intValue(item['remainingSession']);
     if (total == null || remaining == null) {
       return 'Kalan seans: ${item['remainingSession'] ?? '-'}';
     }
-    final used = total - remaining;
-    return 'Kullanılan: $used / $total • Kalan: $remaining seans';
+    final scheduled = _intValue(item['scheduledSession']) ?? 0;
+    final used = _intValue(item['usedSession']) ?? (total - remaining - scheduled);
+    return 'Toplam: $total • Kullanılan: $used • Planlanan: $scheduled • Kalan: $remaining';
   }
 }
 

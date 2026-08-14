@@ -141,11 +141,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 icon: Icons.lock_outline,
                                 label: 'Şifre',
                                 value:
-                                    'Ayrı şifre değiştirme endpoint’i bulunmuyor.',
+                                    'Şifreni Düzenle bölümünden güncelleyebilirsin.',
                               ),
                             ],
                           ),
                         ),
+                      const SizedBox(height: 16),
+                      _MyPackagesSection(customerId: session.customerId!),
+                      const SizedBox(height: 16),
+                      _MyAppointmentsSection(customerId: session.customerId!),
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -240,6 +244,239 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     if (mounted) {
       AppNavigation.go(context, AppRoutes.login);
     }
+  }
+}
+
+/// "Paketlerim" — total / used / scheduled / remaining exactly as the backend
+/// derived them, so a future appointment is shown as planned, never as used.
+class _MyPackagesSection extends ConsumerWidget {
+  const _MyPackagesSection({required this.customerId});
+
+  final int customerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final packages = ref.watch(customerPackagesProvider(customerId));
+    return Column(
+      key: const Key('profile_my_packages'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Paketlerim',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            GlowIconButton(
+              tooltip: 'Paketleri yenile',
+              icon: Icons.refresh,
+              onPressed: () =>
+                  ref.invalidate(customerPackagesProvider(customerId)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        packages.when(
+          loading: () => const GlowSkeleton(height: 96),
+          error: (error, _) => GlowError(
+            message: bookingErrorMessage(error) ?? '$error',
+            onRetry: () => ref.invalidate(customerPackagesProvider(customerId)),
+          ),
+          data: (items) {
+            if (items.isEmpty) {
+              return const GlowEmptyState(
+                title: 'Henüz paketin yok',
+                message: 'Paket aldığında seansların burada görünür.',
+                icon: Icons.inventory_2_outlined,
+              );
+            }
+            final owned = mapCustomerPackageOptions(items);
+            return Column(
+              children: [
+                for (final item in owned) ...[
+                  GlowCard(
+                    padding: const EdgeInsets.all(15),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const GlowMark(
+                              icon: Icons.inventory_2_outlined,
+                              size: 40,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.name,
+                                    style:
+                                        Theme.of(context).textTheme.titleSmall,
+                                  ),
+                                  if (item.serviceName != null)
+                                    Text(
+                                      item.serviceName!,
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (item.active == true)
+                              const GlowPill(label: 'Aktif'),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _ProfileCountRow(
+                            label: 'Toplam', value: item.totalSession),
+                        _ProfileCountRow(
+                            label: 'Kullanılan', value: item.usedSession),
+                        _ProfileCountRow(
+                            label: 'Planlanan', value: item.scheduledSession),
+                        _ProfileCountRow(
+                            label: 'Kalan', value: item.remainingSession),
+                        if (item.validUntil != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              'Geçerlilik: ${item.validUntil}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// "Randevularım" split into Yaklaşan / Geçmiş. The split is decided by the
+/// backend against business time, so an appointment whose hour has passed
+/// moves to Geçmiş on the next refresh without any manual status change.
+class _MyAppointmentsSection extends ConsumerWidget {
+  const _MyAppointmentsSection({required this.customerId});
+
+  final int customerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final upcoming = ref.watch(customerUpcomingAppointmentsProvider(customerId));
+    final past = ref.watch(customerPastAppointmentsProvider(customerId));
+    return Column(
+      key: const Key('profile_my_appointments'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Randevularım',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            GlowIconButton(
+              tooltip: 'Randevuları yenile',
+              icon: Icons.refresh,
+              onPressed: () {
+                ref.invalidate(customerUpcomingAppointmentsProvider(customerId));
+                ref.invalidate(customerPastAppointmentsProvider(customerId));
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _AppointmentGroup(
+          title: 'Yaklaşan Randevular',
+          emptyTitle: 'Yaklaşan randevun yok',
+          value: upcoming,
+        ),
+        const SizedBox(height: 14),
+        _AppointmentGroup(
+          title: 'Geçmiş Randevular',
+          emptyTitle: 'Geçmiş randevun yok',
+          value: past,
+        ),
+      ],
+    );
+  }
+}
+
+class _AppointmentGroup extends StatelessWidget {
+  const _AppointmentGroup({
+    required this.title,
+    required this.emptyTitle,
+    required this.value,
+  });
+
+  final String title;
+  final String emptyTitle;
+  final AsyncValue<List<Map<String, dynamic>>> value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        value.when(
+          loading: () => const GlowSkeleton(height: 64),
+          error: (error, _) =>
+              GlowError(message: bookingErrorMessage(error) ?? '$error'),
+          data: (items) => items.isEmpty
+              ? GlowEmptyState(title: emptyTitle)
+              : Column(
+                  children: [
+                    for (final item in items) ...[
+                      GlowAppointmentCard(
+                        title: item['serviceName']?.toString() ?? 'Randevu',
+                        time:
+                            '${item['appointmentDate'] ?? ''} ${BookingDateUtils.normalizeTime(item['appointmentTime']) ?? ''}'
+                            '${item['status']?.toString().toUpperCase() == 'CANCELLED' ? ' • İptal edildi' : ''}',
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileCountRow extends StatelessWidget {
+  const _ProfileCountRow({required this.label, required this.value});
+
+  final String label;
+  final int? value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+          ),
+          Text(
+            '${value ?? '-'}',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ],
+      ),
+    );
   }
 }
 
