@@ -6,6 +6,7 @@ import '../../core/navigation/app_navigation.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/widgets/glow_widgets.dart';
 import '../../providers/app_providers.dart';
+import '../appointment/booking_models.dart';
 import '../catalog/catalog_models.dart';
 
 class PackageDetailPage extends ConsumerWidget {
@@ -73,23 +74,23 @@ class _PackageDetailContent extends ConsumerStatefulWidget {
 }
 
 class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
-  bool _purchasing = false;
-  bool _purchased = false;
-
-  Future<void> _purchasePackage() async {
-    if (_purchasing) return;
+  /// Continues into the booking wizard carrying the package (and therefore the
+  /// service) forward. The purchase itself happens together with the first
+  /// appointment, so nothing is charged without a booking.
+  Future<void> _continueToBooking() async {
     final customerId =
         ref.read(authControllerProvider).asData?.value?.customerId;
     final packageId = widget.package.id;
+    final serviceId = widget.package.serviceId;
     if (customerId == null) {
       GlowSnackBar.showInfo(
         context,
-        'Paket satın almak için üye girişi yapmalısın.',
+        'Paketini kullanmak için üye girişi yapmalısın.',
       );
       AppNavigation.go(context, AppRoutes.login);
       return;
     }
-    if (packageId == null) {
+    if (packageId == null || serviceId == null) {
       GlowSnackBar.showError(context, 'Paket bilgisi eksik.');
       return;
     }
@@ -97,12 +98,12 @@ class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Paket rezervasyonunu onayla'),
+        title: const Text('Paketinle devam et'),
         content: Text(
           '${widget.package.name}\n\n'
           '${widget.package.totalSession ?? '-'} seans • ${widget.package.priceText ?? 'Fiyat belirtilmedi'}\n'
           '${widget.package.validityDays ?? 365} gün geçerlilik\n\n'
-          'Bu işlem demo/rezervasyon satın alımıdır. Gerçek bir ödeme alınmaz.',
+          'Sırada personel, tarih ve saat seçimi var. Hizmetini tekrar seçmene gerek yok.',
         ),
         actions: [
           TextButton(
@@ -111,31 +112,21 @@ class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Onayla'),
+            child: const Text('Devam'),
           ),
         ],
       ),
     );
     if (confirmed != true || !mounted) return;
 
-    setState(() => _purchasing = true);
-    try {
-      await ref
-          .read(glowBackendServiceProvider)
-          .purchasePackage(customerId, packageId);
-      ref.invalidate(customerPackagesProvider(customerId));
-      if (!mounted) return;
-      GlowSnackBar.showSuccess(
-        context,
-        'Paket rezervasyonun oluşturuldu ve Paketlerim alanına eklendi.',
-      );
-      setState(() => _purchased = true);
-    } catch (error) {
-      if (!mounted) return;
-      GlowSnackBar.showError(context, error.toString());
-    } finally {
-      if (mounted) setState(() => _purchasing = false);
-    }
+    final bookingContext = PackageBookingContext(
+      packageId: packageId,
+      serviceId: serviceId,
+      packageName: widget.package.name,
+      serviceName: widget.package.serviceName,
+      totalSession: widget.package.totalSession,
+    );
+    AppNavigation.go(context, bookingContext.toRoute(AppRoutes.appointment));
   }
 
   @override
@@ -224,24 +215,18 @@ class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Ödeme altyapısı henüz bağlı değildir; bu akış yalnızca demo/rezervasyon satın alımı oluşturur.',
+          'Paketin ilk randevunla birlikte hesabına eklenir; ödeme salonda alınır.',
         ),
         const SizedBox(height: 22),
-        if (!_purchased)
-          GlowButton(
-            label: signedIn ? 'Satın Almayı Onayla' : 'Üye Girişi ile Satın Al',
-            icon: signedIn ? Icons.shopping_bag_outlined : Icons.login,
-            loading: _purchasing,
-            fullWidth: true,
-            onPressed: _purchasePackage,
-          )
-        else
-          GlowButton(
-            label: 'Bu paketle randevu al',
-            icon: Icons.calendar_today_outlined,
-            fullWidth: true,
-            onPressed: () => AppNavigation.go(context, AppRoutes.appointment),
-          ),
+        GlowButton(
+          key: const Key('package_detail_book'),
+          label: signedIn
+              ? 'Bu paketle randevu al'
+              : 'Üye Girişi ile Paketi Kullan',
+          icon: signedIn ? Icons.calendar_today_outlined : Icons.login,
+          fullWidth: true,
+          onPressed: _continueToBooking,
+        ),
         const SizedBox(height: 10),
         GlowButton(
           label: 'Paket Almadan Randevu Oluştur',

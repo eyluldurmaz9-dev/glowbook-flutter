@@ -9,8 +9,16 @@ import '../../providers/app_providers.dart';
 import '../catalog/catalog_models.dart';
 import 'booking_models.dart';
 
+/// Ordered stages of the booking wizard. The concrete sequence depends on how
+/// much the customer already chose before entering — see [_AppointmentPageState._stepKinds].
+enum BookingStepKind { service, option, employee, date, time, summary }
+
 class AppointmentPage extends ConsumerStatefulWidget {
-  const AppointmentPage({super.key});
+  const AppointmentPage({super.key, this.packageContext});
+
+  /// Set when the customer arrived from a package: the package already fixes the
+  /// service, so the wizard skips straight to employee → tarih → saat → özet.
+  final PackageBookingContext? packageContext;
 
   @override
   ConsumerState<AppointmentPage> createState() => _AppointmentPageState();
@@ -23,9 +31,12 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
   final _guestPhoneController = TextEditingController();
 
   var _step = 0;
+  PackageBookingContext? _packageContext;
   CatalogService? _service;
   CatalogOption? _option;
   CustomerPackageOption? _customerPackage;
+  String? _packageEmployeeId;
+  String? _packageEmployeeName;
   var _candidateDates = <DateTime>[
     BookingDateUtils.today().add(const Duration(days: 1)),
   ];
@@ -37,12 +48,63 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
   BookingResult? _result;
 
   @override
+  void initState() {
+    super.initState();
+    final context = widget.packageContext;
+    if (context == null) return;
+    _packageContext = context;
+    // Carry the already chosen service (and sub-service, when unambiguous) forward
+    // instead of asking for them a second time.
+    _service = CatalogService(
+      id: context.serviceId,
+      name: context.serviceName ?? 'Seçilen hizmet',
+    );
+    if (context.optionId != null) {
+      _option = CatalogOption(
+        id: context.optionId,
+        serviceId: context.serviceId,
+        name: 'Paket kapsamındaki hizmet',
+      );
+    }
+  }
+
+  @override
   void dispose() {
     _guestNameController.dispose();
     _guestSurnameController.dispose();
     _guestPhoneController.dispose();
     super.dispose();
   }
+
+  /// Normal booking keeps its original order. Package booking drops the service
+  /// step entirely and asks for the covered sub-service only when the package
+  /// genuinely covers more than one.
+  List<BookingStepKind> get _stepKinds {
+    final context = _packageContext;
+    if (context == null) {
+      return const [
+        BookingStepKind.service,
+        BookingStepKind.option,
+        BookingStepKind.date,
+        BookingStepKind.time,
+        BookingStepKind.employee,
+        BookingStepKind.summary,
+      ];
+    }
+    return [
+      if (!context.hasKnownOption) BookingStepKind.option,
+      BookingStepKind.employee,
+      BookingStepKind.date,
+      BookingStepKind.time,
+      BookingStepKind.summary,
+    ];
+  }
+
+  bool get _packageMode => _packageContext != null;
+
+  BookingStepKind get _currentStep => _stepKinds[_step.clamp(0, _stepKinds.length - 1)];
+
+  int get _lastStepIndex => _stepKinds.length - 1;
 
   @override
   Widget build(BuildContext context) {
@@ -78,8 +140,10 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   GlowPageTop(
-                    title: 'Randevu oluştur',
-                    subtitle: 'Hizmetini seç, sana uygun saati kolayca planla.',
+                    title: _packageMode ? 'Paketinle randevu al' : 'Randevu oluştur',
+                    subtitle: _packageMode
+                        ? '${_packageContext!.packageName ?? 'Paketin'} için personelini, tarihini ve saatini seç.'
+                        : 'Hizmetini seç, sana uygun saati kolayca planla.',
                     action: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -101,8 +165,12 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
                       ],
                     ),
                   ),
-                  BookingStepper(currentStep: _step),
+                  BookingStepper(currentStep: _step, steps: _stepLabels),
                   const SizedBox(height: 18),
+                  if (_packageMode) ...[
+                    _PackageContextBanner(context: _packageContext!),
+                    const SizedBox(height: 18),
+                  ],
                   if (_result != null) ...[
                     BookingResultCard(result: _result!),
                     const SizedBox(height: 18),
@@ -118,13 +186,14 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
                   ),
                   const SizedBox(height: 18),
                   _ActionBar(
-                    step: _step,
+                    isLastStep: _step == _lastStepIndex,
                     canContinue: _canContinue(customerId),
                     submitting: _submitting,
                     onBack: _step == 0 ? null : () => setState(() => _step--),
-                    onNext: _step < 5 ? _goNext : null,
-                    onSubmit:
-                        _step == 5 ? () => _confirmAndSubmit(customerId) : null,
+                    onNext: _step < _lastStepIndex ? _goNext : null,
+                    onSubmit: _step == _lastStepIndex
+                        ? () => _confirmAndSubmit(customerId)
+                        : null,
                   ),
                   const SizedBox(height: 28),
                   _UpcomingAppointments(customerId: customerId),
@@ -141,15 +210,43 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     );
   }
 
+  List<String> get _stepLabels =>
+      _stepKinds.map(_shortLabelFor).toList(growable: false);
+
+  static String _shortLabelFor(BookingStepKind kind) {
+    switch (kind) {
+      case BookingStepKind.service:
+        return 'Hizmet';
+      case BookingStepKind.option:
+        return 'Seçenek';
+      case BookingStepKind.employee:
+        return 'Personel';
+      case BookingStepKind.date:
+        return 'Tarih';
+      case BookingStepKind.time:
+        return 'Saat';
+      case BookingStepKind.summary:
+        return 'Özet';
+    }
+  }
+
   String get _stepTitle {
-    return const [
-      'Hizmet seçimi',
-      'Alt hizmet ve paket',
-      'Tarih seçimi',
-      'Uygun zaman aralığı',
-      'Personel seçimi',
-      'Randevu özeti',
-    ][_step];
+    switch (_currentStep) {
+      case BookingStepKind.service:
+        return 'Hizmet seçimi';
+      case BookingStepKind.option:
+        return _packageMode
+            ? 'Paket kapsamındaki hizmeti seç'
+            : 'Alt hizmet ve paket';
+      case BookingStepKind.employee:
+        return 'Personel seçimi';
+      case BookingStepKind.date:
+        return 'Tarih seçimi';
+      case BookingStepKind.time:
+        return 'Uygun zaman aralığı';
+      case BookingStepKind.summary:
+        return 'Randevu özeti';
+    }
   }
 
   Widget _buildStep({
@@ -158,8 +255,8 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     required int? customerId,
     required bool signedIn,
   }) {
-    switch (_step) {
-      case 0:
+    switch (_currentStep) {
+      case BookingStepKind.service:
         return services.when(
           loading: () => const GlowLoading(message: 'Hizmetler yükleniyor'),
           error: (error, _) => GlowError(
@@ -172,11 +269,19 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
             onSelected: _selectService,
           ),
         );
-      case 1:
+      case BookingStepKind.option:
         if (_service?.id == null) {
           return const GlowEmptyState(title: 'Hizmet seç');
         }
         final options = ref.watch(serviceOptionsProvider(_service!.id!));
+        if (_packageMode) {
+          // The package already fixed the service; only the covered sub-service is open.
+          return _CoveredOptionStep(
+            options: options,
+            selectedOption: _option,
+            onSelected: _selectCoveredOption,
+          );
+        }
         final servicePackages =
             ref.watch(servicePackagesProvider(_service!.id!));
         final customerPackages = customerId == null
@@ -195,7 +300,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           onPackageCleared: () => setState(() => _customerPackage = null),
           onPackagePurchase: (package) => _purchasePackage(customerId, package),
         );
-      case 2:
+      case BookingStepKind.date:
         return _DateStep(
           selectedDates: _candidateDates,
           onSelected: (date) {
@@ -209,12 +314,13 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
             });
           },
         );
-      case 3:
+      case BookingStepKind.time:
         return _TimeStep(
           slots: slots,
           selectedDate: _date,
           selectedTime: _time,
           selectedEmployeeId: _slot?.employeeId,
+          onlyEmployeeId: _packageMode ? _packageEmployeeId : null,
           onTimeSelected: (choice) => setState(() {
             _date = choice.date;
             _time = choice.time;
@@ -224,7 +330,29 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           onJoinWaitlist: () => _joinWaitlist(customerId),
           joiningWaitlist: _joiningWaitlist,
         );
-      case 4:
+      case BookingStepKind.employee:
+        if (_packageMode) {
+          final serviceId = _service?.id;
+          final optionId = _option?.id;
+          if (serviceId == null || optionId == null) {
+            return const GlowEmptyState(title: 'Önce paket hizmetini seç');
+          }
+          return _PackageEmployeeStep(
+            employees: ref.watch(employeesByServiceOptionProvider(
+              EmployeeServiceOptionQuery(
+                serviceId: serviceId,
+                optionId: optionId,
+              ),
+            )),
+            selectedEmployeeId: _packageEmployeeId,
+            onSelected: (id, name) => setState(() {
+              _packageEmployeeId = id;
+              _packageEmployeeName = name;
+              _time = null;
+              _slot = null;
+            }),
+          );
+        }
         return _EmployeeStep(
           slots: slots,
           selectedDate: _date,
@@ -233,22 +361,49 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           onSelected: (slot) => setState(() => _slot = slot),
           onRetry: _refreshSlots,
         );
-      case 5:
+      case BookingStepKind.summary:
         return _SummaryStep(
           signedIn: signedIn,
           service: _service,
-          option: _option,
+          option: _displayOption(),
           package: _customerPackage,
+          packageContext: _packageContext,
           date: _date,
           time: _time,
+          employeeName: _packageMode ? _packageEmployeeName : _slot?.employeeName,
           slot: _slot,
           guestNameController: _guestNameController,
           guestSurnameController: _guestSurnameController,
           guestPhoneController: _guestPhoneController,
         );
-      default:
-        return const SizedBox.shrink();
     }
+  }
+
+  /// In package mode the option name is only a placeholder until the catalog
+  /// loads; show the real one when it is available.
+  CatalogOption? _displayOption() {
+    final serviceId = _service?.id;
+    final optionId = _option?.id;
+    if (!_packageMode || serviceId == null || optionId == null) return _option;
+    final loaded = ref.watch(serviceOptionsProvider(serviceId)).asData?.value;
+    if (loaded == null) return _option;
+    for (final option in mapCatalogOptions(loaded)) {
+      if (option.id == optionId) return option;
+    }
+    return _option;
+  }
+
+  void _selectCoveredOption(CatalogOption option) {
+    final optionId = option.id;
+    if (optionId == null) return;
+    setState(() {
+      _option = option;
+      _packageContext = _packageContext?.withOption(optionId);
+      _packageEmployeeId = null;
+      _packageEmployeeName = null;
+      _time = null;
+      _slot = null;
+    });
   }
 
   void _selectService(CatalogService service) {
@@ -285,27 +440,29 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
   }
 
   bool _canContinue(int? customerId) {
-    switch (_step) {
-      case 0:
+    switch (_currentStep) {
+      case BookingStepKind.service:
         return _service?.id != null;
-      case 1:
+      case BookingStepKind.option:
         return _option?.id != null;
-      case 2:
+      case BookingStepKind.date:
         return _candidateDates.isNotEmpty &&
             _candidateDates.every((date) => !BookingDateUtils.isPast(date));
-      case 3:
+      case BookingStepKind.time:
         return _time != null;
-      case 4:
-        return _slot?.employeeId.isNotEmpty == true;
-      case 5:
+      case BookingStepKind.employee:
+        return _packageMode
+            ? _packageEmployeeId?.isNotEmpty == true
+            : _slot?.employeeId.isNotEmpty == true;
+      case BookingStepKind.summary:
         return _service?.id != null &&
             _option?.id != null &&
             _time != null &&
             _slot?.employeeId.isNotEmpty == true &&
+            // A package booking always belongs to a signed-in customer.
             (customerId != null ||
-                (_guestFormKey.currentState?.validate() ?? false));
-      default:
-        return false;
+                (!_packageMode &&
+                    (_guestFormKey.currentState?.validate() ?? false)));
     }
   }
 
@@ -334,8 +491,12 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     }
     final confirmed = await GlowDialog.showConfirmation(
       context,
-      title: 'Randevuyu onayla',
-      message: 'Seçtiğin saatin uygunluğu son kez kontrol edilecek.',
+      title: _packageContext?.needsPurchase == true
+          ? 'Paketi al ve randevuyu onayla'
+          : 'Randevuyu onayla',
+      message: _packageContext?.needsPurchase == true
+          ? 'Paketin hesabına eklenecek ve ilk randevun oluşturulacak.'
+          : 'Seçtiğin saatin uygunluğu son kez kontrol edilecek.',
       confirmLabel: 'Onayla',
     );
     if (confirmed != true) return;
@@ -372,39 +533,77 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
         throw Exception('Selected slot is not available');
       }
 
-      final payload = <String, dynamic>{
-        if (customerId != null) 'customerId': customerId,
-        if (_customerPackage?.customerPackageId != null)
-          'customerPackageId': _customerPackage!.customerPackageId,
-        'employeeId': employeeId,
-        'serviceId': serviceId,
-        'optionId': optionId,
-        if (customerId == null) ...{
-          'customerName': _guestNameController.text.trim(),
-          'customerSurname': _guestSurnameController.text.trim(),
-          'phone': _guestPhoneController.text.trim(),
-        },
-        'appointmentDate': BookingDateUtils.formatDate(_date),
-        'appointmentTime': time,
-      };
+      final packageContext = _packageContext;
+      final Map<String, dynamic> response;
+      if (packageContext != null &&
+          packageContext.needsPurchase &&
+          customerId != null) {
+        // One call buys the package and books its first appointment atomically,
+        // so a failure never leaves a paid package without a booking.
+        response = await ref
+            .read(glowBackendServiceProvider)
+            .purchasePackageWithFirstAppointment(
+              customerId: customerId,
+              packageId: packageContext.packageId,
+              employeeId: employeeId,
+              optionId: optionId,
+              appointmentDate: BookingDateUtils.formatDate(_date),
+              appointmentTime: time,
+            );
+      } else {
+        response =
+            await ref.read(glowBackendServiceProvider).createAppointment({
+          if (customerId != null) 'customerId': customerId,
+          if (_customerPackage?.customerPackageId != null)
+            'customerPackageId': _customerPackage!.customerPackageId
+          else if (packageContext?.customerPackageId != null)
+            'customerPackageId': packageContext!.customerPackageId,
+          'employeeId': employeeId,
+          'serviceId': serviceId,
+          'optionId': optionId,
+          if (customerId == null) ...{
+            'customerName': _guestNameController.text.trim(),
+            'customerSurname': _guestSurnameController.text.trim(),
+            'phone': _guestPhoneController.text.trim(),
+          },
+          'appointmentDate': BookingDateUtils.formatDate(_date),
+          'appointmentTime': time,
+        });
+      }
 
-      final response =
-          await ref.read(glowBackendServiceProvider).createAppointment(payload);
       if (customerId != null) {
         ref.invalidate(customerUpcomingAppointmentsProvider(customerId));
+        ref.invalidate(customerPastAppointmentsProvider(customerId));
         ref.invalidate(customerPackagesProvider(customerId));
       }
       if (!mounted) return;
       setState(() {
-        _result = BookingResult.appointment(response);
+        // The combined call wraps the appointment next to the updated package.
+        final appointmentJson = response['appointment'];
+        _result = BookingResult.appointment(
+          appointmentJson is Map<String, dynamic> ? appointmentJson : response,
+        );
+        // The package is now owned; a retry must not buy it again.
+        if (packageContext != null && packageContext.needsPurchase) {
+          _packageContext = null;
+        }
       });
-      GlowSnackBar.showSuccess(context, 'Randevun başarıyla oluşturuldu.');
+      GlowSnackBar.showSuccess(
+        context,
+        packageContext?.needsPurchase == true
+            ? 'Paketin eklendi ve ilk randevun oluşturuldu.'
+            : 'Randevun başarıyla oluşturuldu.',
+      );
     } catch (error) {
       if (!mounted) return;
       if (isStaleSlotError(error)) {
+        // Send the customer back to the time step, keeping package, service,
+        // employee and date selections intact.
+        final timeStep = _stepKinds.indexOf(BookingStepKind.time);
         setState(() {
-          _step = 3;
+          if (timeStep >= 0) _step = timeStep;
           _time = null;
+          _slot = null;
         });
       }
       GlowSnackBar.showError(
@@ -504,20 +703,17 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
 }
 
 class BookingStepper extends StatelessWidget {
-  const BookingStepper({super.key, required this.currentStep});
+  const BookingStepper({
+    super.key,
+    required this.currentStep,
+    this.steps = const ['Hizmet', 'Seçenek', 'Tarih', 'Saat', 'Personel', 'Özet'],
+  });
 
   final int currentStep;
+  final List<String> steps;
 
   @override
   Widget build(BuildContext context) {
-    final steps = [
-      'Hizmet',
-      'Seçenek',
-      'Tarih',
-      'Saat',
-      'Personel',
-      'Özet',
-    ];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -784,6 +980,160 @@ class _OptionAndPackageStep extends StatelessWidget {
       '${item.totalSession ?? '-'} seans • ${item.priceText ?? 'Fiyat belirtilmedi'} • ${item.validityDays ?? 365} gün geçerli${item.description == null ? '' : '\n${item.description}'}';
 }
 
+/// Shows what the customer already chose, so the skipped steps stay visible.
+class _PackageContextBanner extends StatelessWidget {
+  const _PackageContextBanner({required this.context});
+
+  final PackageBookingContext context;
+
+  @override
+  Widget build(BuildContext buildContext) {
+    return GlowCard(
+      key: const Key('package_booking_context'),
+      backgroundColor: AppColors.roseTint,
+      borderColor: AppColors.primary,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.packageName ?? 'Seçtiğin paket',
+            style: Theme.of(buildContext).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${context.serviceName ?? 'Hizmetin'} seçildi'
+            '${context.totalSession == null ? '' : ' • ${context.totalSession} seans'}',
+            style: Theme.of(buildContext).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Hizmetini tekrar seçmene gerek yok.',
+            style: Theme.of(buildContext).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sub-service picker used only when a package covers more than one option.
+class _CoveredOptionStep extends StatelessWidget {
+  const _CoveredOptionStep({
+    required this.options,
+    required this.selectedOption,
+    required this.onSelected,
+  });
+
+  final AsyncValue<List<Map<String, dynamic>>> options;
+  final CatalogOption? selectedOption;
+  final ValueChanged<CatalogOption> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return options.when(
+      loading: () => const GlowLoading(message: 'Seçenekler yükleniyor'),
+      error: (error, _) => GlowError(message: bookingErrorMessage(error)!),
+      data: (items) {
+        final mapped = mapCatalogOptions(items);
+        if (mapped.isEmpty) {
+          return const GlowEmptyState(title: 'Paket kapsamında seçenek yok');
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Paketin birden fazla seçeneği kapsıyor. Hangisiyle başlamak istersin?',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 10),
+            for (final option in mapped) ...[
+              _SelectableTile(
+                title: option.name,
+                subtitle: option.priceText ?? 'Paket kapsamında',
+                icon: Icons.spa_outlined,
+                selected: selectedOption?.id == option.id,
+                onTap: option.id == null ? null : () => onSelected(option),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Employee picker for the package flow, shown before tarih/saat.
+class _PackageEmployeeStep extends StatelessWidget {
+  const _PackageEmployeeStep({
+    required this.employees,
+    required this.selectedEmployeeId,
+    required this.onSelected,
+  });
+
+  final AsyncValue<List<Map<String, dynamic>>> employees;
+  final String? selectedEmployeeId;
+  final void Function(String employeeId, String employeeName) onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return employees.when(
+      loading: () => const GlowLoading(message: 'Personeller yükleniyor'),
+      error: (error, _) => GlowError(message: bookingErrorMessage(error)!),
+      data: (items) {
+        final people = items
+            .map(_toEmployeeChoice)
+            .whereType<_EmployeeChoice>()
+            .toList(growable: false);
+        if (people.isEmpty) {
+          return const GlowEmptyState(
+            title: 'Personel bulunamadı',
+            message: 'Bu hizmet için şu an uygun personel yok.',
+            icon: Icons.person_off_outlined,
+          );
+        }
+        return Column(
+          key: const Key('package_employee_step'),
+          children: [
+            for (final person in people) ...[
+              _SelectableTile(
+                title: person.name,
+                subtitle: 'Bu personelle devam et',
+                icon: Icons.person_outline,
+                selected: selectedEmployeeId == person.id,
+                onTap: () => onSelected(person.id, person.name),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  static _EmployeeChoice? _toEmployeeChoice(Map<String, dynamic> json) {
+    final id = json['employeeId']?.toString().trim();
+    if (id == null || id.isEmpty) return null;
+    final name = [json['firstName'], json['lastName']]
+        .where((item) => item != null && item.toString().trim().isNotEmpty)
+        .join(' ')
+        .trim();
+    final fallback = json['employeeName']?.toString().trim();
+    return _EmployeeChoice(
+      id,
+      name.isNotEmpty ? name : (fallback == null || fallback.isEmpty ? 'Personel' : fallback),
+    );
+  }
+}
+
+class _EmployeeChoice {
+  const _EmployeeChoice(this.id, this.name);
+
+  final String id;
+  final String name;
+}
+
 class _DateStep extends StatelessWidget {
   const _DateStep({required this.selectedDates, required this.onSelected});
 
@@ -887,12 +1237,16 @@ class _TimeStep extends StatelessWidget {
     required this.onRetry,
     required this.onJoinWaitlist,
     required this.joiningWaitlist,
+    this.onlyEmployeeId,
   });
 
   final AsyncValue<List<Map<String, dynamic>>>? slots;
   final DateTime selectedDate;
   final String? selectedTime;
   final String? selectedEmployeeId;
+
+  /// Package booking picks the employee first, so only that employee's hours show.
+  final String? onlyEmployeeId;
   final ValueChanged<BookingTimeChoice> onTimeSelected;
   final VoidCallback onRetry;
   final VoidCallback onJoinWaitlist;
@@ -952,6 +1306,7 @@ class _TimeStep extends StatelessWidget {
   List<BookingTimeChoice> _bookingChoices(List<BookingSlot> slots) {
     final choices = <BookingTimeChoice>[];
     for (final slot in slots) {
+      if (onlyEmployeeId != null && slot.employeeId != onlyEmployeeId) continue;
       for (final time in slot.availableTimes) {
         if (BookingDateUtils.isFutureFullHourSlot(slot.date, time)) {
           choices
@@ -1051,8 +1406,10 @@ class _SummaryStep extends StatelessWidget {
     required this.service,
     required this.option,
     required this.package,
+    required this.packageContext,
     required this.date,
     required this.time,
+    required this.employeeName,
     required this.slot,
     required this.guestNameController,
     required this.guestSurnameController,
@@ -1063,8 +1420,10 @@ class _SummaryStep extends StatelessWidget {
   final CatalogService? service;
   final CatalogOption? option;
   final CustomerPackageOption? package;
+  final PackageBookingContext? packageContext;
   final DateTime date;
   final String? time;
+  final String? employeeName;
   final BookingSlot? slot;
   final TextEditingController guestNameController;
   final TextEditingController guestSurnameController;
@@ -1072,15 +1431,24 @@ class _SummaryStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final packageLabel = packageContext?.packageName ?? package?.name;
     return Column(
       children: [
         _SummaryRow(label: 'Hizmet', value: service?.name ?? '-'),
         _SummaryRow(label: 'Alt hizmet', value: option?.name ?? '-'),
         _SummaryRow(label: 'Fiyat', value: option?.priceText ?? 'Fiyat yok'),
-        _SummaryRow(label: 'Paket', value: package?.name ?? 'Paket yok'),
+        _SummaryRow(label: 'Paket', value: packageLabel ?? 'Paket yok'),
+        if (packageContext != null)
+          _SummaryRow(
+            label: 'Seans',
+            value: 'Bu randevu 1 seans kullanır'
+                '${packageContext!.totalSession == null ? '' : ' (toplam ${packageContext!.totalSession} seans)'}',
+          ),
         _SummaryRow(label: 'Tarih', value: BookingDateUtils.formatDate(date)),
         _SummaryRow(label: 'Saat', value: time ?? '-'),
-        _SummaryRow(label: 'Personel', value: slot?.employeeName ?? '-'),
+        _SummaryRow(
+            label: 'Personel',
+            value: employeeName ?? slot?.employeeName ?? '-'),
         if (!signedIn) ...[
           const SizedBox(height: 14),
           GlowTextField(
@@ -1157,7 +1525,7 @@ class BookingResultCard extends StatelessWidget {
 
 class _ActionBar extends StatelessWidget {
   const _ActionBar({
-    required this.step,
+    required this.isLastStep,
     required this.canContinue,
     required this.submitting,
     required this.onBack,
@@ -1165,7 +1533,7 @@ class _ActionBar extends StatelessWidget {
     required this.onSubmit,
   });
 
-  final int step;
+  final bool isLastStep;
   final bool canContinue;
   final bool submitting;
   final VoidCallback? onBack;
@@ -1187,8 +1555,8 @@ class _ActionBar extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: GlowButton(
-            label: step == 5 ? 'Onayla' : 'Devam',
-            icon: step == 5 ? Icons.check : Icons.chevron_right,
+            label: isLastStep ? 'Onayla' : 'Devam',
+            icon: isLastStep ? Icons.check : Icons.chevron_right,
             loading: submitting,
             onPressed: canContinue ? (onSubmit ?? onNext) : null,
           ),

@@ -143,6 +143,24 @@ class GlowBackendService implements AuthBackend {
     return _postMap('/api/customers/$customerId/packages/$packageId', null);
   }
 
+  /// Buys the package and books its first appointment in one atomic step.
+  /// The service is derived from the package, so it is never sent again.
+  Future<Map<String, dynamic>> purchasePackageWithFirstAppointment({
+    required int customerId,
+    required int packageId,
+    required String employeeId,
+    int? optionId,
+    required String appointmentDate,
+    required String appointmentTime,
+  }) {
+    return _postMap('/api/customers/$customerId/packages/$packageId/booking', {
+      'employeeId': employeeId,
+      if (optionId != null) 'optionId': optionId,
+      'appointmentDate': appointmentDate,
+      'appointmentTime': appointmentTime,
+    });
+  }
+
   Future<List<Map<String, dynamic>>> getEmployees() {
     return _getList('/api/admin/employees');
   }

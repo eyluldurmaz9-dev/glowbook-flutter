@@ -30,21 +30,36 @@ class BookingSlot {
   bool hasTime(String time) => availableTimes.contains(time);
 }
 
+/// One owned package with the session numbers the backend derived.
+///
+/// `used` counts sessions whose appointment time has already passed, `scheduled`
+/// counts appointments still ahead, and `remaining` is what may still be booked.
+/// A future appointment is therefore never reported as already used.
 class CustomerPackageOption {
   const CustomerPackageOption({
     required this.customerPackageId,
     required this.packageId,
     required this.name,
+    this.serviceId,
+    this.serviceName,
     this.remainingSession,
     this.totalSession,
+    this.usedSessionCount,
+    this.scheduledSession,
+    this.validUntil,
     this.active,
   });
 
   final int? customerPackageId;
   final int? packageId;
   final String name;
+  final int? serviceId;
+  final String? serviceName;
   final int? remainingSession;
   final int? totalSession;
+  final int? usedSessionCount;
+  final int? scheduledSession;
+  final String? validUntil;
   final bool? active;
 
   factory CustomerPackageOption.fromJson(Map<String, dynamic> json) {
@@ -52,15 +67,24 @@ class CustomerPackageOption {
       customerPackageId: _intValue(json['customerPackageId']),
       packageId: _intValue(json['packageId']),
       name: _cleanText(json['packageName']) ?? 'Paket',
+      serviceId: _intValue(json['serviceId']),
+      serviceName: _cleanText(json['serviceName']),
       remainingSession: _intValue(json['remainingSession']),
       totalSession: _intValue(json['totalSession']),
+      usedSessionCount: _intValue(json['usedSession']),
+      scheduledSession: _intValue(json['scheduledSession']),
+      validUntil: _cleanText(json['validUntil']),
       active: _boolValue(json['active']),
     );
   }
 
+  /// Falls back to `total - remaining` only when the backend did not send the
+  /// derived value, so older responses still render something sensible.
   int? get usedSession {
+    if (usedSessionCount != null) return usedSessionCount;
     if (totalSession == null || remainingSession == null) return null;
-    return totalSession! - remainingSession!;
+    final scheduled = scheduledSession ?? 0;
+    return totalSession! - remainingSession! - scheduled;
   }
 
   bool canUseFor(List<CatalogPackage> servicePackages) {
@@ -71,6 +95,79 @@ class CustomerPackageOption {
       return false;
     }
     return servicePackages.any((item) => item.id == packageId);
+  }
+}
+
+/// Selections the customer already made before entering the booking wizard.
+///
+/// When a package carries this context the wizard must not ask for the service
+/// again: the package fixes it. Only [optionId] may still be missing, and only
+/// when the package covers more than one sub-service.
+class PackageBookingContext {
+  const PackageBookingContext({
+    required this.packageId,
+    required this.serviceId,
+    this.optionId,
+    this.customerPackageId,
+    this.packageName,
+    this.serviceName,
+    this.totalSession,
+  });
+
+  final int packageId;
+  final int serviceId;
+  final int? optionId;
+  final int? customerPackageId;
+  final String? packageName;
+  final String? serviceName;
+  final int? totalSession;
+
+  /// True when the package still has to be bought as part of this booking.
+  bool get needsPurchase => customerPackageId == null;
+
+  bool get hasKnownOption => optionId != null;
+
+  PackageBookingContext withOption(int optionId) => PackageBookingContext(
+        packageId: packageId,
+        serviceId: serviceId,
+        optionId: optionId,
+        customerPackageId: customerPackageId,
+        packageName: packageName,
+        serviceName: serviceName,
+        totalSession: totalSession,
+      );
+
+  static PackageBookingContext? fromQuery(Map<String, String> query) {
+    final packageId = int.tryParse(query['packageId'] ?? '');
+    final serviceId = int.tryParse(query['serviceId'] ?? '');
+    if (packageId == null || serviceId == null) return null;
+    return PackageBookingContext(
+      packageId: packageId,
+      serviceId: serviceId,
+      optionId: int.tryParse(query['optionId'] ?? ''),
+      customerPackageId: int.tryParse(query['customerPackageId'] ?? ''),
+      packageName: _cleanText(query['packageName']),
+      serviceName: _cleanText(query['serviceName']),
+      totalSession: int.tryParse(query['totalSession'] ?? ''),
+    );
+  }
+
+  Map<String, String> toQuery() => {
+        'packageId': '$packageId',
+        'serviceId': '$serviceId',
+        if (optionId != null) 'optionId': '$optionId',
+        if (customerPackageId != null) 'customerPackageId': '$customerPackageId',
+        if (packageName != null) 'packageName': packageName!,
+        if (serviceName != null) 'serviceName': serviceName!,
+        if (totalSession != null) 'totalSession': '$totalSession',
+      };
+
+  String toRoute(String basePath) {
+    final query = toQuery().entries
+        .map((entry) =>
+            '${Uri.encodeQueryComponent(entry.key)}=${Uri.encodeQueryComponent(entry.value)}')
+        .join('&');
+    return '$basePath?$query';
   }
 }
 

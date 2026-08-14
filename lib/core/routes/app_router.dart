@@ -6,6 +6,7 @@ import '../../features/auth/register_page.dart';
 import '../../features/auth/forgot_password_page.dart';
 import '../../features/home/home_page.dart';
 import '../../features/appointment/appointment_page.dart';
+import '../../features/appointment/booking_models.dart';
 import '../../features/appointment/calendar_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/notification/notification_page.dart';
@@ -70,8 +71,14 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(
-        path: AppRoutes.appointment,
-        builder: (context, state) => const AppointmentPage()),
+      path: AppRoutes.appointment,
+      // Package selections arrive as query parameters so the wizard can skip
+      // asking for a service the customer already chose.
+      builder: (context, state) => AppointmentPage(
+        packageContext:
+            PackageBookingContext.fromQuery(state.queryParameters),
+      ),
+    ),
     GoRoute(
         path: AppRoutes.calendar,
         builder: (context, state) => const CalendarPage()),
