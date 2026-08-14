@@ -1645,6 +1645,55 @@ class GlowCatalogImage extends StatelessWidget {
   }
 }
 
+/// A properly proportioned hero image for service/package DETAIL screens.
+///
+/// [GlowCatalogImage] is reused for the actual pixels, but a detail hero
+/// needs its own container shape: our source photos are square or mildly
+/// landscape, so stretching them across a fixed short height on a wide
+/// desktop viewport (`width: double.infinity, height: 220`) forced
+/// [BoxFit.cover] into an extreme panoramic crop that showed only a narrow
+/// strip of the subject. Constraining the width and sizing by aspect ratio
+/// instead keeps the crop close to what the source photo actually is, on
+/// every viewport.
+class GlowDetailHeroImage extends StatelessWidget {
+  const GlowDetailHeroImage({
+    super.key,
+    required this.semanticLabel,
+    this.image,
+    this.icon = Icons.spa_outlined,
+    this.maxWidth = 420,
+    this.aspectRatio = 1,
+    this.radius = 30,
+  });
+
+  final String semanticLabel;
+  final String? image;
+  final IconData icon;
+  final double maxWidth;
+  final double aspectRatio;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: AspectRatio(
+          aspectRatio: aspectRatio,
+          child: GlowCatalogImage(
+            semanticLabel: semanticLabel,
+            image: image,
+            icon: icon,
+            width: double.infinity,
+            height: double.infinity,
+            radius: radius,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 List<GlowNavigationItem> glowDefaultWebNavigationItems = const [
   GlowNavigationItem(
     label: 'Ana Sayfa',

@@ -117,8 +117,6 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('package_detail_service')), findsOneWidget);
-    expect(find.text('Masaj ve Spa hizmetini gör'), findsOneWidget);
     final hero = find.descendant(
       of: find.byKey(const Key('package_detail_hero_3')),
       matching: find.byType(Image),
@@ -128,6 +126,17 @@ void main() {
       (tester.widget<Image>(hero).image as AssetImage).assetName,
       GlowBookAssets.spa,
     );
+
+    // The hero is now properly proportioned (square, not a short panoramic
+    // strip) instead of a fixed 220px band, so it is taller and the button
+    // below it needs a scroll to come into view — expected for a page whose
+    // image finally shows the whole subject.
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('package_detail_service')),
+      320,
+    );
+    expect(find.byKey(const Key('package_detail_service')), findsOneWidget);
+    expect(find.text('Masaj ve Spa hizmetini gör'), findsOneWidget);
     expect(
         tester
             .widget<OutlinedButton>(

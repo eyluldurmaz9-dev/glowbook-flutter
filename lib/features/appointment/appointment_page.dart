@@ -35,6 +35,15 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
   final _guestSurnameController = TextEditingController();
   final _guestPhoneController = TextEditingController();
 
+  /// The wizard is one long [SingleChildScrollView] shared by every step, so
+  /// its scroll offset otherwise carries over between steps. Advancing from a
+  /// long step (e.g. the package list) to a short one (e.g. the calendar)
+  /// then just clamps that old offset to the new, smaller content — leaving
+  /// the calendar's month header scrolled above the viewport, its navigation
+  /// arrows unreachable. Resetting to the top on every step change keeps each
+  /// step's content, including that header, visible from the start.
+  final _scrollController = ScrollController();
+
   var _step = 0;
   PackageBookingContext? _packageContext;
   CatalogService? _service;
@@ -80,7 +89,18 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     _guestNameController.dispose();
     _guestSurnameController.dispose();
     _guestPhoneController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Scrolls the wizard back to the top so the new step's content — including
+  /// a header like the calendar's month navigation — starts fully in view.
+  void _scrollToTop() {
+    if (!_scrollController.hasClients) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.jumpTo(0);
+    });
   }
 
   /// Normal booking keeps its original order. Package booking drops the service
@@ -143,6 +163,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           child: Form(
             key: _guestFormKey,
             child: SingleChildScrollView(
+              controller: _scrollController,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -196,7 +217,12 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
                     isLastStep: _step == _lastStepIndex,
                     canContinue: _canContinue(customerId),
                     submitting: _submitting,
-                    onBack: _step == 0 ? null : () => setState(() => _step--),
+                    onBack: _step == 0
+                        ? null
+                        : () {
+                            setState(() => _step--);
+                            _scrollToTop();
+                          },
                     onNext: _step < _lastStepIndex ? _goNext : null,
                     onSubmit: _step == _lastStepIndex
                         ? () => _confirmAndSubmit(customerId)
@@ -444,6 +470,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
   void _goNext() {
     if (!_canContinue(null)) return;
     setState(() => _step++);
+    _scrollToTop();
   }
 
   bool _canContinue(int? customerId) {
@@ -598,6 +625,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           _time = null;
           _slot = null;
         });
+        _scrollToTop();
       }
       GlowSnackBar.showError(
         context,
@@ -763,6 +791,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     if (customerId == null &&
         !(_guestFormKey.currentState?.validate() ?? false)) {
       setState(() => _step = 5);
+      _scrollToTop();
       GlowSnackBar.showError(context, 'Misafir bilgilerini tamamla.');
       return;
     }

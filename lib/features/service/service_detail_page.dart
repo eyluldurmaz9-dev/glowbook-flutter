@@ -144,11 +144,10 @@ class _ServiceHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GlowCatalogImage(
+        GlowDetailHeroImage(
+          key: Key('service_detail_hero_${service.id}'),
           semanticLabel: service.name,
           image: service.image,
-          width: double.infinity,
-          height: 220,
           radius: 30,
         ),
         const SizedBox(height: 22),

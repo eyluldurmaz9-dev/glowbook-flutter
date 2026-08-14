@@ -156,6 +156,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(router.location, '/services/7');
+    // The detail hero is now properly proportioned (square) instead of a
+    // fixed 220px band, so it is taller and the sections below it need a
+    // scroll to come into view.
+    await tester.scrollUntilVisible(find.text('Alt hizmetler'), 320);
     expect(find.text('Alt hizmetler'), findsOneWidget);
   });
 }
