@@ -333,7 +333,8 @@ String? bookingErrorMessage(Object error) {
     return 'Oturum süren dolmuş olabilir. Lütfen tekrar giriş yap.';
   }
   if (message.toLowerCase().contains('occupied') ||
-      message.toLowerCase().contains('not available')) {
+      message.toLowerCase().contains('not available') ||
+      message.contains('tarafından dolu')) {
     return 'Bu saat artık uygun değil. Lütfen başka bir saat seç.';
   }
   if (message.contains('Geçmiş bir tarih') ||
@@ -353,7 +354,9 @@ String? bookingErrorMessage(Object error) {
 
 bool isStaleSlotError(Object error) {
   final message = error.toString().toLowerCase();
-  return message.contains('occupied') || message.contains('not available');
+  return message.contains('occupied') ||
+      message.contains('not available') ||
+      message.contains('tarafından dolu');
 }
 
 String? _cleanText(Object? value) {
