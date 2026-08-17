@@ -77,9 +77,13 @@ class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
   /// Continues straight into the booking wizard carrying the package (and
   /// therefore the service) forward — the customer already deliberately chose
   /// both by reaching this screen, so no extra "continue?" confirmation is
-  /// needed. The purchase itself happens together with the first appointment,
-  /// so nothing is charged without a booking.
-  void _continueToBooking() {
+  /// needed. When the package already belongs to the customer this books a
+  /// later session against it instead of purchasing a second copy, so this
+  /// same button also serves the Paketlerim → package → "Bu paketle randevu
+  /// al" entry point. The purchase itself (when one is still needed) happens
+  /// together with the first appointment, so nothing is charged without a
+  /// booking.
+  Future<void> _continueToBooking() async {
     final customerId =
         ref.read(authControllerProvider).asData?.value?.customerId;
     final packageId = widget.package.id;
@@ -97,12 +101,39 @@ class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
       return;
     }
 
+    final coveredOptions = widget.package.coveredOptions;
+    final coveredOptionIds = coveredOptions
+        .map((option) => option.id)
+        .whereType<int>()
+        .toList(growable: false);
+    // A package that covers exactly one sub-service never needs to ask again.
+    final knownOptionId =
+        coveredOptionIds.length == 1 ? coveredOptionIds.first : null;
+
+    // An already-owned, still-bookable copy books a later session instead of
+    // purchasing a second one; any lookup failure safely falls back to the
+    // first-purchase flow, same as before this screen knew about ownership.
+    int? customerPackageId;
+    try {
+      final owned = await ref.read(customerPackagesProvider(customerId).future);
+      final match = mapCustomerPackageOptions(owned)
+          .where((item) => item.canUseFor([widget.package]))
+          .toList();
+      if (match.isNotEmpty) customerPackageId = match.first.customerPackageId;
+    } catch (_) {
+      customerPackageId = null;
+    }
+    if (!mounted) return;
+
     final bookingContext = PackageBookingContext(
       packageId: packageId,
       serviceId: serviceId,
+      optionId: knownOptionId,
+      customerPackageId: customerPackageId,
       packageName: widget.package.name,
       serviceName: widget.package.serviceName,
       totalSession: widget.package.totalSession,
+      coveredOptionIds: coveredOptionIds,
     );
     AppNavigation.go(context, bookingContext.toRoute(AppRoutes.appointment));
   }

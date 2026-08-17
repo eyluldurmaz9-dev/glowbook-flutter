@@ -180,6 +180,7 @@ void main() {
         packageName: '10 Seans Lazer',
         serviceName: 'Lazer Epilasyon',
         totalSession: 10,
+        coveredOptionIds: [22],
       ),
     );
 

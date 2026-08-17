@@ -48,6 +48,7 @@ class CustomerPackageOption {
     this.scheduledSession,
     this.validUntil,
     this.active,
+    this.coveredOptions = const [],
   });
 
   final int? customerPackageId;
@@ -62,6 +63,12 @@ class CustomerPackageOption {
   final String? validUntil;
   final bool? active;
 
+  /// The sub-services this owned package may actually be booked for — same
+  /// authority as [CatalogPackage.coveredOptions], carried onto the
+  /// customer's own copy so "Paketlerim" can route into the same
+  /// package-scoped booking logic as a fresh purchase.
+  final List<CatalogOption> coveredOptions;
+
   factory CustomerPackageOption.fromJson(Map<String, dynamic> json) {
     return CustomerPackageOption(
       customerPackageId: _intValue(json['customerPackageId']),
@@ -75,6 +82,10 @@ class CustomerPackageOption {
       scheduledSession: _intValue(json['scheduledSession']),
       validUntil: _cleanText(json['validUntil']),
       active: _boolValue(json['active']),
+      coveredOptions: ((json['coveredOptions'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((item) => CatalogOption.fromJson(item.cast<String, dynamic>()))
+          .toList(growable: false),
     );
   }
 
@@ -112,6 +123,7 @@ class PackageBookingContext {
     this.packageName,
     this.serviceName,
     this.totalSession,
+    this.coveredOptionIds = const [],
   });
 
   final int packageId;
@@ -121,6 +133,13 @@ class PackageBookingContext {
   final String? packageName;
   final String? serviceName;
   final int? totalSession;
+
+  /// IDs of every sub-service this package actually covers (see
+  /// [CatalogPackage.coveredOptions]) — the wizard's option step, when it is
+  /// shown at all, must never offer anything outside this list. Carried
+  /// through the URL (see [toQuery]/[fromQuery]) so it survives Back/Forward
+  /// and a page refresh exactly like every other package selection.
+  final List<int> coveredOptionIds;
 
   /// True when the package still has to be bought as part of this booking.
   bool get needsPurchase => customerPackageId == null;
@@ -135,6 +154,7 @@ class PackageBookingContext {
         packageName: packageName,
         serviceName: serviceName,
         totalSession: totalSession,
+        coveredOptionIds: coveredOptionIds,
       );
 
   static PackageBookingContext? fromQuery(Map<String, String> query) {
@@ -149,6 +169,11 @@ class PackageBookingContext {
       packageName: _cleanText(query['packageName']),
       serviceName: _cleanText(query['serviceName']),
       totalSession: int.tryParse(query['totalSession'] ?? ''),
+      coveredOptionIds: (query['coveredOptionIds'] ?? '')
+          .split(',')
+          .map((item) => int.tryParse(item.trim()))
+          .whereType<int>()
+          .toList(growable: false),
     );
   }
 
@@ -156,14 +181,18 @@ class PackageBookingContext {
         'packageId': '$packageId',
         'serviceId': '$serviceId',
         if (optionId != null) 'optionId': '$optionId',
-        if (customerPackageId != null) 'customerPackageId': '$customerPackageId',
+        if (customerPackageId != null)
+          'customerPackageId': '$customerPackageId',
         if (packageName != null) 'packageName': packageName!,
         if (serviceName != null) 'serviceName': serviceName!,
         if (totalSession != null) 'totalSession': '$totalSession',
+        if (coveredOptionIds.isNotEmpty)
+          'coveredOptionIds': coveredOptionIds.join(','),
       };
 
   String toRoute(String basePath) {
-    final query = toQuery().entries
+    final query = toQuery()
+        .entries
         .map((entry) =>
             '${Uri.encodeQueryComponent(entry.key)}=${Uri.encodeQueryComponent(entry.value)}')
         .join('&');

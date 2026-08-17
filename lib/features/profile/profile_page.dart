@@ -296,58 +296,75 @@ class _MyPackagesSection extends ConsumerWidget {
             return Column(
               children: [
                 for (final item in owned) ...[
-                  GlowCard(
-                    padding: const EdgeInsets.all(15),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const GlowMark(
-                              icon: Icons.inventory_2_outlined,
-                              size: 40,
+                  InkWell(
+                    key: Key('profile_package_${item.customerPackageId}'),
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: item.serviceId == null || item.packageId == null
+                        ? null
+                        // Same package-scoped booking logic as a fresh
+                        // purchase: package detail derives the covered
+                        // sub-service(s) and, since this copy is already
+                        // owned, books a later session instead of buying
+                        // a second one.
+                        : () => AppNavigation.go(
+                              context,
+                              '/packages/${item.serviceId}/${item.packageId}',
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.name,
-                                    style:
-                                        Theme.of(context).textTheme.titleSmall,
-                                  ),
-                                  if (item.serviceName != null)
+                    child: GlowCard(
+                      padding: const EdgeInsets.all(15),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const GlowMark(
+                                icon: Icons.inventory_2_outlined,
+                                size: 40,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                     Text(
-                                      item.serviceName!,
-                                      style:
-                                          Theme.of(context).textTheme.bodySmall,
+                                      item.name,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall,
                                     ),
-                                ],
+                                    if (item.serviceName != null)
+                                      Text(
+                                        item.serviceName!,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              if (item.active == true)
+                                const GlowPill(label: 'Aktif'),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          _ProfileCountRow(
+                              label: 'Toplam', value: item.totalSession),
+                          _ProfileCountRow(
+                              label: 'Kullanılan', value: item.usedSession),
+                          _ProfileCountRow(
+                              label: 'Planlanan', value: item.scheduledSession),
+                          _ProfileCountRow(
+                              label: 'Kalan', value: item.remainingSession),
+                          if (item.validUntil != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                'Geçerlilik: ${item.validUntil}',
+                                style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ),
-                            if (item.active == true)
-                              const GlowPill(label: 'Aktif'),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        _ProfileCountRow(
-                            label: 'Toplam', value: item.totalSession),
-                        _ProfileCountRow(
-                            label: 'Kullanılan', value: item.usedSession),
-                        _ProfileCountRow(
-                            label: 'Planlanan', value: item.scheduledSession),
-                        _ProfileCountRow(
-                            label: 'Kalan', value: item.remainingSession),
-                        if (item.validUntil != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              'Geçerlilik: ${item.validUntil}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -371,7 +388,8 @@ class _MyAppointmentsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final upcoming = ref.watch(customerUpcomingAppointmentsProvider(customerId));
+    final upcoming =
+        ref.watch(customerUpcomingAppointmentsProvider(customerId));
     final past = ref.watch(customerPastAppointmentsProvider(customerId));
     return Column(
       key: const Key('profile_my_appointments'),
@@ -389,7 +407,8 @@ class _MyAppointmentsSection extends ConsumerWidget {
               tooltip: 'Randevuları yenile',
               icon: Icons.refresh,
               onPressed: () {
-                ref.invalidate(customerUpcomingAppointmentsProvider(customerId));
+                ref.invalidate(
+                    customerUpcomingAppointmentsProvider(customerId));
                 ref.invalidate(customerPastAppointmentsProvider(customerId));
               },
             ),

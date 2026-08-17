@@ -62,12 +62,19 @@ void main() {
                   'totalSession': 10,
                   'price': '1500',
                   'active': true,
+                  'coveredOptions': [
+                    {
+                      'optionId': 22,
+                      'serviceId': 2,
+                      'optionName': '5 Bolge',
+                      'price': '1650',
+                    },
+                  ],
                 },
               ],
             ),
-            // The package detail screen never collects a sub-service, so the
-            // wizard's first step (only) still has to ask for the one the
-            // package covers — this is the single allowed extra question.
+            // The package covers exactly this one sub-service, so it is
+            // derived silently and the wizard goes straight to personel.
             serviceOptionsProvider.overrideWith(
               (ref, serviceId) async => const [
                 {
@@ -76,6 +83,11 @@ void main() {
                   'optionName': '5 Bolge',
                   'price': '1650',
                 },
+              ],
+            ),
+            employeesByServiceOptionProvider.overrideWith(
+              (ref, query) async => const [
+                {'employeeId': 'EMP-2', 'employeeName': 'Eylem Ceylan'},
               ],
             ),
             customerUpcomingAppointmentsProvider
@@ -106,11 +118,13 @@ void main() {
       await tester.tap(find.byKey(const Key('package_detail_book')));
       await tester.pumpAndSettle();
 
-      // One deliberate tap was enough — straight into the wizard, no modal,
-      // and the service is not asked again (only the covered sub-service is).
+      // One deliberate tap was enough — straight into the wizard, no modal.
+      // This package covers exactly one sub-service, so it is derived
+      // silently and neither the service nor the sub-service is asked again.
       expect(router.location, startsWith(AppRoutes.appointment));
-      expect(find.text('Paket kapsamındaki hizmeti seç'), findsOneWidget);
+      expect(find.text('Personel seçimi'), findsOneWidget);
       expect(find.text('Hizmet seçimi'), findsNothing);
+      expect(find.text('Paket kapsamındaki hizmeti seç'), findsNothing);
       expect(find.byKey(const Key('package_booking_context')), findsOneWidget);
       expect(find.text('Paketinle devam et'), findsNothing);
     });

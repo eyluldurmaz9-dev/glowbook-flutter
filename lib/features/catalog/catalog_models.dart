@@ -75,6 +75,7 @@ class CatalogPackage {
     this.validityDays,
     this.image,
     this.active,
+    this.coveredOptions = const [],
   });
 
   final int? id;
@@ -87,6 +88,13 @@ class CatalogPackage {
   final int? validityDays;
   final String? image;
   final bool? active;
+
+  /// The sub-services this package may actually be booked for — the sole
+  /// authority on what "Bu paketle randevu al" may offer. A package whose
+  /// name mentions one treatment (e.g. Hydrafacial) must never let the
+  /// customer pick a sibling sub-service (e.g. Akne Bakımı) under the same
+  /// broad service just because the backend's [serviceId] matches.
+  final List<CatalogOption> coveredOptions;
 
   factory CatalogPackage.fromJson(Map<String, dynamic> json) {
     return CatalogPackage(
@@ -104,6 +112,10 @@ class CatalogPackage {
         serviceName: _cleanText(json['serviceName']),
       ),
       active: _boolValue(json['active']),
+      coveredOptions: ((json['coveredOptions'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((item) => CatalogOption.fromJson(item.cast<String, dynamic>()))
+          .toList(growable: false),
     );
   }
 

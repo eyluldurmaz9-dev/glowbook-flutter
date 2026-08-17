@@ -13,6 +13,12 @@ import 'booking_models.dart';
 /// much the customer already chose before entering — see [_AppointmentPageState._stepKinds].
 enum BookingStepKind { service, option, employee, date, time, summary }
 
+int? _asInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
 /// Explicit submission outcomes for the final confirmation. Exactly one of
 /// [success] or [failure] is ever reached per submission — never both — which
 /// is what keeps a stale success state from coexisting with a later conflict.
@@ -129,7 +135,8 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
 
   bool get _packageMode => _packageContext != null;
 
-  BookingStepKind get _currentStep => _stepKinds[_step.clamp(0, _stepKinds.length - 1)];
+  BookingStepKind get _currentStep =>
+      _stepKinds[_step.clamp(0, _stepKinds.length - 1)];
 
   int get _lastStepIndex => _stepKinds.length - 1;
 
@@ -156,89 +163,105 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
             ),
           );
 
-    return Scaffold(
-      body: SafeArea(
-        child: GlowResponsivePage(
-          padding: const EdgeInsets.fromLTRB(20, 25, 20, 106),
-          child: Form(
-            key: _guestFormKey,
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GlowPageTop(
-                    title: _packageMode ? 'Paketinle randevu al' : 'Randevu oluştur',
-                    subtitle: _packageMode
-                        ? '${_packageContext!.packageName ?? 'Paketin'} için personelini, tarihini ve saatini seç.'
-                        : 'Hizmetini seç, sana uygun saati kolayca planla.',
-                    action: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GlowIconButton(
-                          icon: Icons.calendar_month_outlined,
-                          tooltip: 'Takvim',
-                          onPressed: () =>
-                              AppNavigation.go(context, AppRoutes.calendar),
-                        ),
-                        const SizedBox(width: 8),
-                        GlowIconButton(
-                          icon: Icons.badge_outlined,
-                          tooltip: 'Personel seç',
-                          onPressed: () => AppNavigation.go(
-                            context,
-                            AppRoutes.employeeSelection,
+    // Android's hardware back button and iOS's swipe-back gesture must step
+    // through the wizard exactly like the in-page "Geri" button — not jump
+    // straight out of the page, which would skip the required
+    // Summary → Time → Date → Employee sequence. Only the first step (and a
+    // submission in flight, so an in-progress request is never abandoned)
+    // lets the system gesture leave the page.
+    return PopScope(
+      canPop: _step == 0 && !_submitting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || _submitting) return;
+        setState(() => _step--);
+        _scrollToTop();
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: GlowResponsivePage(
+            padding: const EdgeInsets.fromLTRB(20, 25, 20, 106),
+            child: Form(
+              key: _guestFormKey,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    GlowPageTop(
+                      title: _packageMode
+                          ? 'Paketinle randevu al'
+                          : 'Randevu oluştur',
+                      subtitle: _packageMode
+                          ? '${_packageContext!.packageName ?? 'Paketin'} için personelini, tarihini ve saatini seç.'
+                          : 'Hizmetini seç, sana uygun saati kolayca planla.',
+                      action: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GlowIconButton(
+                            icon: Icons.calendar_month_outlined,
+                            tooltip: 'Takvim',
+                            onPressed: () =>
+                                AppNavigation.go(context, AppRoutes.calendar),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          GlowIconButton(
+                            icon: Icons.badge_outlined,
+                            tooltip: 'Personel seç',
+                            onPressed: () => AppNavigation.go(
+                              context,
+                              AppRoutes.employeeSelection,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  BookingStepper(currentStep: _step, steps: _stepLabels),
-                  const SizedBox(height: 18),
-                  if (_packageMode) ...[
-                    _PackageContextBanner(context: _packageContext!),
+                    BookingStepper(currentStep: _step, steps: _stepLabels),
                     const SizedBox(height: 18),
-                  ],
-                  if (_result != null) ...[
-                    BookingResultCard(result: _result!),
-                    const SizedBox(height: 18),
-                  ],
-                  _StepSurface(
-                    title: _stepTitle,
-                    child: _buildStep(
-                      services: services,
-                      slots: slots,
-                      customerId: customerId,
-                      signedIn: customerId != null,
+                    if (_packageMode) ...[
+                      _PackageContextBanner(context: _packageContext!),
+                      const SizedBox(height: 18),
+                    ],
+                    if (_result != null) ...[
+                      BookingResultCard(result: _result!),
+                      const SizedBox(height: 18),
+                    ],
+                    _StepSurface(
+                      title: _stepTitle,
+                      child: _buildStep(
+                        services: services,
+                        slots: slots,
+                        customerId: customerId,
+                        signedIn: customerId != null,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  _ActionBar(
-                    isLastStep: _step == _lastStepIndex,
-                    canContinue: _canContinue(customerId),
-                    submitting: _submitting,
-                    onBack: _step == 0
-                        ? null
-                        : () {
-                            setState(() => _step--);
-                            _scrollToTop();
-                          },
-                    onNext: _step < _lastStepIndex ? _goNext : null,
-                    onSubmit: _step == _lastStepIndex
-                        ? () => _confirmAndSubmit(customerId)
-                        : null,
-                  ),
-                  const SizedBox(height: 28),
-                  _UpcomingAppointments(customerId: customerId),
-                ],
+                    const SizedBox(height: 18),
+                    _ActionBar(
+                      isLastStep: _step == _lastStepIndex,
+                      canContinue: _canContinue(customerId),
+                      submitting: _submitting,
+                      onBack: _step == 0
+                          ? null
+                          : () {
+                              setState(() => _step--);
+                              _scrollToTop();
+                            },
+                      onNext: _step < _lastStepIndex ? _goNext : null,
+                      onSubmit: _step == _lastStepIndex
+                          ? () => _confirmAndSubmit(customerId)
+                          : null,
+                    ),
+                    const SizedBox(height: 28),
+                    _UpcomingAppointments(customerId: customerId),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-      bottomNavigationBar: GlowBottomNavigationBar(
-        currentIndex: 2,
-        onTap: (index) => AppNavigation.goBottomTab(context, index),
+        bottomNavigationBar: GlowBottomNavigationBar(
+          currentIndex: 2,
+          onTap: (index) => AppNavigation.goBottomTab(context, index),
+        ),
       ),
     );
   }
@@ -308,9 +331,18 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
         }
         final options = ref.watch(serviceOptionsProvider(_service!.id!));
         if (_packageMode) {
-          // The package already fixed the service; only the covered sub-service is open.
+          // The package already fixed the service; only its own covered
+          // sub-services are offered — never the wider service catalog, which
+          // is what previously let an unrelated sub-service (e.g. Akne
+          // Bakımı under a Hydrafacial-only package) slip through.
+          final coveredIds = _packageContext!.coveredOptionIds.toSet();
           return _CoveredOptionStep(
-            options: options,
+            options: options.whenData(
+              (items) => items
+                  .where(
+                      (item) => coveredIds.contains(_asInt(item['optionId'])))
+                  .toList(growable: false),
+            ),
             selectedOption: _option,
             onSelected: _selectCoveredOption,
           );
@@ -403,7 +435,8 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           packageContext: _packageContext,
           date: _date,
           time: _time,
-          employeeName: _packageMode ? _packageEmployeeName : _slot?.employeeName,
+          employeeName:
+              _packageMode ? _packageEmployeeName : _slot?.employeeName,
           slot: _slot,
           guestNameController: _guestNameController,
           guestSurnameController: _guestSurnameController,
@@ -836,7 +869,14 @@ class BookingStepper extends StatelessWidget {
   const BookingStepper({
     super.key,
     required this.currentStep,
-    this.steps = const ['Hizmet', 'Seçenek', 'Tarih', 'Saat', 'Personel', 'Özet'],
+    this.steps = const [
+      'Hizmet',
+      'Seçenek',
+      'Tarih',
+      'Saat',
+      'Personel',
+      'Özet'
+    ],
   });
 
   final int currentStep;
@@ -1252,7 +1292,9 @@ class _PackageEmployeeStep extends StatelessWidget {
     final fallback = json['employeeName']?.toString().trim();
     return _EmployeeChoice(
       id,
-      name.isNotEmpty ? name : (fallback == null || fallback.isEmpty ? 'Personel' : fallback),
+      name.isNotEmpty
+          ? name
+          : (fallback == null || fallback.isEmpty ? 'Personel' : fallback),
     );
   }
 }
