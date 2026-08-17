@@ -40,7 +40,7 @@ void main() {
     await _pumpAdmin(tester, backend: _FakeAdminBackend());
 
     expect(find.byKey(const Key('admin_mobile_logout')), findsOneWidget);
-    expect(find.byTooltip('Oturumu Kapat'), findsOneWidget);
+    expect(find.byTooltip('Çıkış Yap'), findsOneWidget);
     addTearDown(() => _resetViewport(tester));
   });
 

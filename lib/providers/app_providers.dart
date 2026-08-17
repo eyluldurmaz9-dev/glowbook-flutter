@@ -44,9 +44,9 @@ final authControllerProvider =
 const _fallbackServices = <Map<String, dynamic>>[
   {
     'serviceId': 1,
-    'serviceName': 'Cilt Bakimi',
+    'serviceName': 'Cilt Bakımı',
     'description':
-        "Cilt analizi, derin temizlik ve nem bakimi ile GlowBook'un imza bakim deneyimi.",
+        "Cilt analizi, derin temizlik ve nem bakımı ile GlowBook'un imza bakım deneyimi.",
     'serviceImage':
         'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=900&q=80',
     'active': true,
@@ -55,7 +55,7 @@ const _fallbackServices = <Map<String, dynamic>>[
     'serviceId': 2,
     'serviceName': 'Lazer Epilasyon',
     'description':
-        'Konforlu randevu akisiyla bolge bazli lazer epilasyon hizmetleri.',
+        'Konforlu randevu akışıyla bölge bazlı lazer epilasyon hizmetleri.',
     'serviceImage':
         'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=900&q=80',
     'active': true,
@@ -63,23 +63,23 @@ const _fallbackServices = <Map<String, dynamic>>[
   {
     'serviceId': 3,
     'serviceName': 'Masaj ve Spa',
-    'description': 'Rahatlatan masaj seanslari ve spa bakimlari.',
+    'description': 'Rahatlatan masaj seansları ve spa bakımları.',
     'serviceImage':
         'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=900&q=80',
     'active': true,
   },
   {
     'serviceId': 4,
-    'serviceName': 'Kas ve Kirpik',
-    'description': 'Kas alimi, kas tasarimi, lifting ve kirpik bakimi.',
+    'serviceName': 'Kaş ve Kirpik',
+    'description': 'Kaş alımı, kaş tasarımı, lifting ve kirpik bakımı.',
     'serviceImage':
         'https://images.unsplash.com/photo-1519415510236-718bdfcd89c8?auto=format&fit=crop&w=900&q=80',
     'active': true,
   },
   {
     'serviceId': 5,
-    'serviceName': 'Bolgesel Incelme',
-    'description': 'Bolgesel incelme, sikilasma ve selulit bakimi seanslari.',
+    'serviceName': 'Bölgesel İncelme',
+    'description': 'Bölgesel incelme, sıkılaşma ve selülit bakımı seansları.',
     'serviceImage':
         'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=900&q=80',
     'active': true,
@@ -91,35 +91,35 @@ const _fallbackOptionsByService = <int, List<Map<String, dynamic>>>{
     {
       'optionId': 101,
       'serviceId': 1,
-      'optionName': 'Klasik Cilt Bakimi',
+      'optionName': 'Klasik Cilt Bakımı',
       'price': 900.0,
       'active': true
     },
     {
       'optionId': 102,
       'serviceId': 1,
-      'optionName': 'Hydrafacial Bakim',
+      'optionName': 'Hydrafacial Bakım',
       'price': 1500.0,
       'active': true
     },
     {
       'optionId': 103,
       'serviceId': 1,
-      'optionName': 'Anti Aging Bakim',
+      'optionName': 'Anti Aging Bakım',
       'price': 1800.0,
       'active': true
     },
     {
       'optionId': 104,
       'serviceId': 1,
-      'optionName': 'Leke Bakimi',
+      'optionName': 'Leke Bakımı',
       'price': 1650.0,
       'active': true
     },
     {
       'optionId': 105,
       'serviceId': 1,
-      'optionName': 'Akne Bakimi',
+      'optionName': 'Akne Bakımı',
       'price': 1400.0,
       'active': true
     },
@@ -128,35 +128,35 @@ const _fallbackOptionsByService = <int, List<Map<String, dynamic>>>{
     {
       'optionId': 201,
       'serviceId': 2,
-      'optionName': 'Tek Bolge',
+      'optionName': 'Tek Bölge',
       'price': 450.0,
       'active': true
     },
     {
       'optionId': 202,
       'serviceId': 2,
-      'optionName': '3 Bolge',
+      'optionName': '3 Bölge',
       'price': 1100.0,
       'active': true
     },
     {
       'optionId': 203,
       'serviceId': 2,
-      'optionName': '5 Bolge',
+      'optionName': '5 Bölge',
       'price': 1650.0,
       'active': true
     },
     {
       'optionId': 204,
       'serviceId': 2,
-      'optionName': 'Yuz Bolgesi',
+      'optionName': 'Yüz Bölgesi',
       'price': 650.0,
       'active': true
     },
     {
       'optionId': 205,
       'serviceId': 2,
-      'optionName': 'Tum Vucut',
+      'optionName': 'Tüm Vücut',
       'price': 2200.0,
       'active': true
     },
@@ -165,7 +165,7 @@ const _fallbackOptionsByService = <int, List<Map<String, dynamic>>>{
     {
       'optionId': 301,
       'serviceId': 3,
-      'optionName': 'Aromaterapi Masaji',
+      'optionName': 'Aromaterapi Masajı',
       'price': 1200.0,
       'active': true
     },
@@ -181,21 +181,21 @@ const _fallbackOptionsByService = <int, List<Map<String, dynamic>>>{
     {
       'optionId': 401,
       'serviceId': 4,
-      'optionName': 'Kas Alimi',
+      'optionName': 'Kaş Alımı',
       'price': 350.0,
       'active': true
     },
     {
       'optionId': 402,
       'serviceId': 4,
-      'optionName': 'Kas Tasarimi',
+      'optionName': 'Kaş Tasarımı',
       'price': 650.0,
       'active': true
     },
     {
       'optionId': 403,
       'serviceId': 4,
-      'optionName': 'Kas Laminasyonu',
+      'optionName': 'Kaş Laminasyonu',
       'price': 900.0,
       'active': true
     },
@@ -211,28 +211,28 @@ const _fallbackOptionsByService = <int, List<Map<String, dynamic>>>{
     {
       'optionId': 501,
       'serviceId': 5,
-      'optionName': 'Karin Bolgesi',
+      'optionName': 'Karın Bölgesi',
       'price': 1450.0,
       'active': true
     },
     {
       'optionId': 502,
       'serviceId': 5,
-      'optionName': 'Bacak Bolgesi',
+      'optionName': 'Bacak Bölgesi',
       'price': 1550.0,
       'active': true
     },
     {
       'optionId': 503,
       'serviceId': 5,
-      'optionName': 'Kol Bolgesi',
+      'optionName': 'Kol Bölgesi',
       'price': 1250.0,
       'active': true
     },
     {
       'optionId': 504,
       'serviceId': 5,
-      'optionName': 'Selulit Bakimi',
+      'optionName': 'Selülit Bakımı',
       'price': 1650.0,
       'active': true
     },
@@ -244,9 +244,9 @@ const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
     {
       'packageId': 101,
       'serviceId': 1,
-      'serviceName': 'Cilt Bakimi',
+      'serviceName': 'Cilt Bakımı',
       'packageName': 'Glow Cilt Paketi',
-      'description': '4 seanslik yenileyici cilt bakimi paketi.',
+      'description': '4 seanslık yenileyici cilt bakımı paketi.',
       'totalSession': 4,
       'price': 5200.0,
       'active': true,
@@ -254,9 +254,9 @@ const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
     {
       'packageId': 102,
       'serviceId': 1,
-      'serviceName': 'Cilt Bakimi',
-      'packageName': 'Hydrafacial Bakim Paketi',
-      'description': '5 seanslik nem ve parlaklik bakim paketi.',
+      'serviceName': 'Cilt Bakımı',
+      'packageName': 'Hydrafacial Bakım Paketi',
+      'description': '5 seanslık nem ve parlaklık bakım paketi.',
       'totalSession': 5,
       'price': 6500.0,
       'active': true,
@@ -267,8 +267,8 @@ const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
       'packageId': 201,
       'serviceId': 2,
       'serviceName': 'Lazer Epilasyon',
-      'packageName': '5 Bolge Lazer Paketi',
-      'description': '10 seanslik 5 bolge lazer epilasyon paketi.',
+      'packageName': '5 Bölge Lazer Paketi',
+      'description': '10 seanslık 5 bölge lazer epilasyon paketi.',
       'totalSession': 10,
       'price': 1500.0,
       'active': true,
@@ -277,8 +277,8 @@ const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
       'packageId': 202,
       'serviceId': 2,
       'serviceName': 'Lazer Epilasyon',
-      'packageName': 'Tum Vucut Lazer Paketi',
-      'description': '8 seanslik tum vucut lazer epilasyon programi.',
+      'packageName': 'Tüm Vücut Lazer Paketi',
+      'description': '8 seanslık tüm vücut lazer epilasyon programı.',
       'totalSession': 8,
       'price': 11500.0,
       'active': true,
@@ -287,8 +287,8 @@ const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
       'packageId': 203,
       'serviceId': 2,
       'serviceName': 'Lazer Epilasyon',
-      'packageName': 'Yuz Bolgesi Lazer Paketi',
-      'description': '6 seanslik yuz bolgesi lazer epilasyon paketi.',
+      'packageName': 'Yüz Bölgesi Lazer Paketi',
+      'description': '6 seanslık yüz bölgesi lazer epilasyon paketi.',
       'totalSession': 6,
       'price': 3200.0,
       'active': true,
@@ -300,7 +300,7 @@ const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
       'serviceId': 3,
       'serviceName': 'Masaj ve Spa',
       'packageName': 'Spa Yenilenme Paketi',
-      'description': '3 seanslik masaj ve spa paketi.',
+      'description': '3 seanslık masaj ve spa paketi.',
       'totalSession': 3,
       'price': 3600.0,
       'active': true,
@@ -310,9 +310,9 @@ const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
     {
       'packageId': 401,
       'serviceId': 4,
-      'serviceName': 'Kas ve Kirpik',
-      'packageName': 'Kas Kirpik Bakim Paketi',
-      'description': '4 seanslik kas ve kirpik bakim paketi.',
+      'serviceName': 'Kaş ve Kirpik',
+      'packageName': 'Kaş Kirpik Bakım Paketi',
+      'description': '4 seanslık kaş ve kirpik bakım paketi.',
       'totalSession': 4,
       'price': 2600.0,
       'active': true,
@@ -322,9 +322,9 @@ const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
     {
       'packageId': 501,
       'serviceId': 5,
-      'serviceName': 'Bolgesel Incelme',
-      'packageName': 'Incelme Programi',
-      'description': '6 seanslik bolgesel incelme programi.',
+      'serviceName': 'Bölgesel İncelme',
+      'packageName': 'İncelme Programı',
+      'description': '6 seanslık bölgesel incelme programı.',
       'totalSession': 6,
       'price': 7800.0,
       'active': true,
@@ -332,9 +332,9 @@ const _fallbackPackagesByService = <int, List<Map<String, dynamic>>>{
     {
       'packageId': 502,
       'serviceId': 5,
-      'serviceName': 'Bolgesel Incelme',
-      'packageName': 'Sikilasma Paketi',
-      'description': '8 seanslik bolgesel sikilasma ve selulit bakimi.',
+      'serviceName': 'Bölgesel İncelme',
+      'packageName': 'Sıkılaşma Paketi',
+      'description': '8 seanslık bölgesel sıkılaşma ve selülit bakımı.',
       'totalSession': 8,
       'price': 9800.0,
       'active': true,
@@ -346,9 +346,9 @@ const _fallbackEmployees = <Map<String, dynamic>>[
   {
     'employeeId': 'GLW001',
     'firstName': 'GlowBook',
-    'lastName': 'Uzmani',
-    'fullName': 'GlowBook Uzmani',
-    'employeeName': 'GlowBook Uzmani',
+    'lastName': 'Uzmanı',
+    'fullName': 'GlowBook Uzmanı',
+    'employeeName': 'GlowBook Uzmanı',
     'phone': 'Uygun personel',
     'active': true,
   },

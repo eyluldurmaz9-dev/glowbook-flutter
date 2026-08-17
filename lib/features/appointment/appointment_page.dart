@@ -702,7 +702,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _SummaryRow(label: 'Hizmet', value: result.serviceName ?? '-'),
-            _SummaryRow(label: 'Alt hizmet', value: result.optionName ?? '-'),
+            _SummaryRow(label: 'Alt Hizmet', value: result.optionName ?? '-'),
             _SummaryRow(label: 'Personel', value: result.employeeName ?? '-'),
             _SummaryRow(label: 'Tarih', value: result.date ?? '-'),
             _SummaryRow(label: 'Saat', value: result.time ?? '-'),
@@ -1288,7 +1288,7 @@ class _DateStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Birden fazla tarih secebilirsin. Uygun saatler sonraki adimda birlikte listelenir.',
+          'Birden fazla tarih seçebilirsin. Uygun saatler sonraki adımda birlikte listelenir.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
@@ -1565,7 +1565,7 @@ class _SummaryStep extends StatelessWidget {
     return Column(
       children: [
         _SummaryRow(label: 'Hizmet', value: service?.name ?? '-'),
-        _SummaryRow(label: 'Alt hizmet', value: option?.name ?? '-'),
+        _SummaryRow(label: 'Alt Hizmet', value: option?.name ?? '-'),
         _SummaryRow(label: 'Fiyat', value: option?.priceText ?? 'Fiyat yok'),
         _SummaryRow(label: 'Paket', value: packageLabel ?? 'Paket yok'),
         if (packageContext != null)
@@ -1639,7 +1639,7 @@ class BookingResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _SummaryRow(label: 'Hizmet', value: result.serviceName ?? '-'),
-          _SummaryRow(label: 'Alt hizmet', value: result.optionName ?? '-'),
+          _SummaryRow(label: 'Alt Hizmet', value: result.optionName ?? '-'),
           if (!result.waitingList)
             _SummaryRow(label: 'Personel', value: result.employeeName ?? '-'),
           _SummaryRow(label: 'Tarih', value: result.date ?? '-'),
@@ -1822,6 +1822,15 @@ class _DateChip extends StatelessWidget {
   }
 }
 
+/// One label/value line for a summary list (Randevu Özeti, booking result
+/// cards, confirmation dialogs). Both columns use [Expanded] with a fixed
+/// flex ratio, never [Flexible] — a loosely-fit value shrinks to its own
+/// content width instead of the space it was allocated, which is what let
+/// short values (a time, a price) start flush after the label while a long
+/// one (a service/package name) rendered as if it belonged to a different
+/// column. With both sides [Expanded], every row's label starts at the same
+/// x, every row's value starts at the same x, and a long value wraps inside
+/// its own fixed-width column instead of resizing that column.
 class _SummaryRow extends StatelessWidget {
   const _SummaryRow({required this.label, required this.value});
 
@@ -1831,17 +1840,19 @@ class _SummaryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
+            flex: 2,
             child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
           const SizedBox(width: 12),
-          Flexible(
+          Expanded(
+            flex: 3,
             child: Text(
               value,
-              textAlign: TextAlign.end,
               style: Theme.of(context).textTheme.titleSmall,
             ),
           ),

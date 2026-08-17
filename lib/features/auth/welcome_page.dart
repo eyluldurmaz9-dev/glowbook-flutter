@@ -117,7 +117,7 @@ class _WelcomeHeroVisual extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       image: true,
-      label: 'GlowBook premium guzellik deneyimi',
+      label: 'GlowBook premium güzellik deneyimi',
       child: SizedBox(
         height: height,
         child: DecoratedBox(
@@ -179,12 +179,12 @@ class _WelcomeHeroVisual extends StatelessWidget {
                     spacing: 10,
                     runSpacing: 10,
                     children: const [
-                      _HeroPill(icon: Icons.spa_outlined, label: 'Cilt bakimi'),
+                      _HeroPill(icon: Icons.spa_outlined, label: 'Cilt Bakımı'),
                       _HeroPill(
                         icon: Icons.calendar_today_outlined,
-                        label: 'Aninda randevu',
+                        label: 'Anında Randevu',
                       ),
-                      _HeroPill(icon: Icons.star_outline, label: '4.9 deneyim'),
+                      _HeroPill(icon: Icons.star_outline, label: '4.9 Deneyim'),
                     ],
                   ),
                 ),

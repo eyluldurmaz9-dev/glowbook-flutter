@@ -88,7 +88,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
               actions: [
                 IconButton(
                   key: const Key('admin_mobile_logout'),
-                  tooltip: 'Oturumu Kapat',
+                  tooltip: 'Çıkış Yap',
                   onPressed: _logout,
                   icon: const Icon(Icons.logout),
                 ),
@@ -469,7 +469,7 @@ class _AdminSidebar extends StatelessWidget {
             ),
           const Spacer(),
           GlowButton(
-            label: 'Oturumu kapat',
+            label: 'Çıkış Yap',
             icon: Icons.logout,
             variant: GlowButtonVariant.outlined,
             fullWidth: true,

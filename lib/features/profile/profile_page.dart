@@ -71,7 +71,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         title: 'Profil',
                         subtitle: 'Hesap bilgilerini güvenli şekilde yönet.',
                         action: GlowIconButton(
-                          tooltip: 'Çıkış yap',
+                          tooltip: 'Çıkış Yap',
                           icon: Icons.logout,
                           onPressed: _logout,
                         ),

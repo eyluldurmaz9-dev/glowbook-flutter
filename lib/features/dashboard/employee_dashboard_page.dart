@@ -161,7 +161,7 @@ class _EmployeeDashboardShell extends ConsumerWidget {
         title: 'Personel Paneli',
         actions: [
           IconButton(
-            tooltip: 'Oturumu kapat',
+            tooltip: 'Çıkış Yap',
             onPressed: onLogout,
             icon: const Icon(Icons.logout),
           ),
@@ -716,7 +716,7 @@ class _EmployeeProfilePanel extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
               GlowButton(
-                label: 'Oturumu kapat',
+                label: 'Çıkış Yap',
                 icon: Icons.logout,
                 variant: GlowButtonVariant.outlined,
                 onPressed: onLogout,

@@ -626,7 +626,7 @@ class _ProfileSummary extends StatelessWidget {
                         onPressed: onOpenProfile,
                       ),
                       GlowButton(
-                        label: 'Oturumu Kapat',
+                        label: 'Çıkış Yap',
                         icon: Icons.logout,
                         variant: GlowButtonVariant.outlined,
                         onPressed: onLogout,
