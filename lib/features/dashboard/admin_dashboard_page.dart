@@ -1106,6 +1106,13 @@ class _AppointmentsSection extends ConsumerWidget {
                   data: (items) => items.isEmpty
                       ? const GlowEmptyState(title: 'Bu hafta randevu yok')
                       : _AdminTable(
+                          // The İşlem column can hold two buttons (Onayla/Tamamla
+                          // + İptal) that wrap onto a second line on narrower
+                          // widths; without an explicit range DataTable keeps
+                          // every row at a fixed 48px regardless of content and
+                          // that second line paints over the row below it.
+                          dataRowMinHeight: 56,
+                          dataRowMaxHeight: 112,
                           columns: const [
                             DataColumn(label: Text('Tarih')),
                             DataColumn(label: Text('Saat')),
@@ -1279,17 +1286,37 @@ class _AdminHeader extends StatelessWidget {
 }
 
 class _AdminTable extends StatelessWidget {
-  const _AdminTable({required this.columns, required this.rows});
+  const _AdminTable({
+    required this.columns,
+    required this.rows,
+    this.dataRowMinHeight,
+    this.dataRowMaxHeight,
+  });
 
   final List<DataColumn> columns;
   final List<DataRow> rows;
+
+  /// Left null for every table whose cells are always a single line, which
+  /// keeps DataTable's default fixed 48px row height (unchanged behavior).
+  /// A table whose cells can wrap onto more than one line (e.g. an action
+  /// column with more than one button) needs an explicit min/max range, or
+  /// DataTable holds every row at that fixed height regardless of content
+  /// and a wrapped second line paints into the row below instead of growing
+  /// its own row.
+  final double? dataRowMinHeight;
+  final double? dataRowMaxHeight;
 
   @override
   Widget build(BuildContext context) {
     return GlowCard(
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: DataTable(columns: columns, rows: rows),
+        child: DataTable(
+          columns: columns,
+          rows: rows,
+          dataRowMinHeight: dataRowMinHeight,
+          dataRowMaxHeight: dataRowMaxHeight,
+        ),
       ),
     );
   }
