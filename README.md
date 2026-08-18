@@ -122,6 +122,8 @@ SPA route rewrite ayarlari `vercel.json` icindedir.
 
 ## Vercel Deployment
 
+Production frontend URL: `https://glowbook-flutter.vercel.app`
+
 Vercel'de proje root'u `flutter_app` olacak sekilde ayarlanir. Repository Vercel'e baglandiginda `package.json` Vercel tarafindan algilanir ve `vercel.json` icindeki build komutu calisir.
 
 - Install command: `npm install`
