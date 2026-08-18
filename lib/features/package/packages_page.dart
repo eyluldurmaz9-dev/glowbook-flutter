@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/navigation/app_navigation.dart';
+import '../../core/routes/app_routes.dart';
 import '../../core/widgets/glow_widgets.dart';
 import '../../providers/app_providers.dart';
 import '../catalog/catalog_models.dart';
@@ -72,6 +73,18 @@ class PackagesCatalogContent extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 25, 20, 106),
       child: ListView(
         children: [
+          Row(
+            children: [
+              GlowIconButton(
+                key: const Key('packages_public_home'),
+                icon: Icons.home_outlined,
+                tooltip: 'Ana Sayfaya Dön',
+                onPressed: () =>
+                    AppNavigation.go(context, AppRoutes.welcome),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           const GlowPageTop(
             title: 'Paketler',
             subtitle: 'Seanslarını gerçek katalog paketleriyle planla.',

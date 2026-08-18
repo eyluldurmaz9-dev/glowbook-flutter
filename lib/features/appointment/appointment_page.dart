@@ -132,6 +132,19 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     }
   }
 
+  /// Distinct from [_handleTopBack]: that one steps through the wizard (or
+  /// exits to the signed-in app shell once there's nothing left to step
+  /// back through). This one always leaves the booking flow entirely for
+  /// the public welcome/landing screen — deterministic regardless of step,
+  /// Navigator history, or auth state, since a guest or a signed-in
+  /// customer can both want to abandon booking and land back on
+  /// "Güzelliği planlamanın en kolay yolu." Pure navigation only: no
+  /// session/token is touched.
+  void _goToPublicLanding() {
+    if (_submitting) return;
+    AppNavigation.go(context, AppRoutes.welcome);
+  }
+
   /// Employee is chosen before tarih/saat in both flows: picking who provides
   /// the service first is what makes tarih/saat show that employee's actual
   /// availability instead of an arbitrary combined list. Package booking
@@ -220,6 +233,13 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
                           icon: Icons.chevron_left,
                           tooltip: 'Geri',
                           onPressed: _handleTopBack,
+                        ),
+                        const SizedBox(width: 8),
+                        GlowIconButton(
+                          key: const Key('booking_public_home'),
+                          icon: Icons.home_outlined,
+                          tooltip: 'Ana Sayfaya Dön',
+                          onPressed: _goToPublicLanding,
                         ),
                       ],
                     ),

@@ -26,6 +26,19 @@ void main() {
     expect(find.text('Personel yetkisi gerekli'), findsOneWidget);
   });
 
+  testWidgets(
+      'Personel panelinde public-home "Ana Sayfaya Dön" kontrolü yoktur',
+      (tester) async {
+    await _pumpDashboard(tester, backend: _FakeEmployeeBackend());
+
+    expect(find.byKey(const Key('services_public_home')), findsNothing);
+    expect(find.byKey(const Key('packages_public_home')), findsNothing);
+    expect(find.byKey(const Key('booking_public_home')), findsNothing);
+    expect(
+        find.byKey(const Key('guest_access_public_home')), findsNothing);
+    expect(find.text('Ana Sayfaya Dön'), findsNothing);
+  });
+
   testWidgets('Günlük ve haftalık randevu filtreleri gösterilir',
       (tester) async {
     final today = BookingDateUtils.today();

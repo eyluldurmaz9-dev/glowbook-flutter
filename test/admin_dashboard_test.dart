@@ -216,6 +216,21 @@ void main() {
   });
 
   testWidgets(
+      'Admin panelinde public-home "Ana Sayfaya Dön" kontrolü yoktur',
+      (tester) async {
+    _setWideViewport(tester);
+    await _pumpAdmin(tester, backend: _FakeAdminBackend());
+
+    expect(find.byKey(const Key('services_public_home')), findsNothing);
+    expect(find.byKey(const Key('packages_public_home')), findsNothing);
+    expect(find.byKey(const Key('booking_public_home')), findsNothing);
+    expect(
+        find.byKey(const Key('guest_access_public_home')), findsNothing);
+    expect(find.text('Ana Sayfaya Dön'), findsNothing);
+    addTearDown(() => _resetViewport(tester));
+  });
+
+  testWidgets(
       'Hizmet kartı görseli 16/9 AspectRatio içinde render edilir (mobil/web kırpma regresyonu)',
       (tester) async {
     _setWideViewport(tester);

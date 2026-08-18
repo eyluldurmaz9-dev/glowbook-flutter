@@ -439,6 +439,14 @@ class _GuestAccessView extends StatelessWidget {
                           onPressed: () =>
                               AppNavigation.go(context, AppRoutes.login),
                         ),
+                        GlowButton(
+                          key: const Key('guest_access_public_home'),
+                          label: 'Ana Sayfaya Dön',
+                          icon: Icons.home_outlined,
+                          variant: GlowButtonVariant.secondary,
+                          onPressed: () =>
+                              AppNavigation.go(context, AppRoutes.welcome),
+                        ),
                       ],
                     ),
                   ],

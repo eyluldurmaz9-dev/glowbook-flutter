@@ -73,6 +73,18 @@ class ServicesCatalogContent extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 25, 20, 106),
       child: ListView(
         children: [
+          Row(
+            children: [
+              GlowIconButton(
+                key: const Key('services_public_home'),
+                icon: Icons.home_outlined,
+                tooltip: 'Ana Sayfaya Dön',
+                onPressed: () =>
+                    AppNavigation.go(context, AppRoutes.welcome),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           GlowPageTop(
             title: 'Hizmetleri keşfet',
             subtitle: 'Aktif hizmet kataloğu.',
