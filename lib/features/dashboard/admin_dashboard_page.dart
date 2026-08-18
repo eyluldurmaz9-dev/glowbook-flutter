@@ -952,11 +952,6 @@ class _ScheduleSection extends ConsumerWidget {
           subtitle: 'İşletme takvimi yönetimi.',
           actions: [
             GlowButton(
-              label: 'Saat Ekle',
-              icon: Icons.add,
-              onPressed: busy ? null : onCreateWorkingHour,
-            ),
-            GlowButton(
               label: 'Tatil Ekle',
               icon: Icons.beach_access_outlined,
               variant: GlowButtonVariant.outlined,
