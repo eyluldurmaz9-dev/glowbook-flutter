@@ -151,6 +151,9 @@ Future<void> _pumpToSummaryStep(
             ]),
         servicePackagesProvider.overrideWith((ref, id) async => const []),
         customerPackagesProvider.overrideWith((ref, id) async => const []),
+        employeesByServiceOptionProvider.overrideWith((ref, q) async => const [
+              {'employeeId': 'EMP-1', 'employeeName': 'Eylem Ceylan'},
+            ]),
         availableSlotsProvider.overrideWith((ref, q) async => [
               {
                 'employeeId': 'EMP-1',
@@ -178,17 +181,17 @@ Future<void> _pumpToSummaryStep(
   await tester.ensureVisible(find.text('Devam').last);
   await tester.tap(find.text('Devam').last, warnIfMissed: false);
   await tester.pumpAndSettle();
+  await tester.ensureVisible(find.text('Eylem Ceylan'));
+  await tester.tap(find.text('Eylem Ceylan'), warnIfMissed: false);
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(find.text('Devam').last);
+  await tester.tap(find.text('Devam').last, warnIfMissed: false);
+  await tester.pumpAndSettle();
   await tester.ensureVisible(find.text('Devam').last);
   await tester.tap(find.text('Devam').last, warnIfMissed: false);
   await tester.pumpAndSettle();
   await tester.ensureVisible(find.textContaining('10:00'));
   await tester.tap(find.textContaining('10:00').first, warnIfMissed: false);
-  await tester.pumpAndSettle();
-  await tester.ensureVisible(find.text('Devam').last);
-  await tester.tap(find.text('Devam').last, warnIfMissed: false);
-  await tester.pumpAndSettle();
-  await tester.ensureVisible(find.text('Eylem Ceylan'));
-  await tester.tap(find.text('Eylem Ceylan'), warnIfMissed: false);
   await tester.pumpAndSettle();
   await tester.ensureVisible(find.text('Devam').last);
   await tester.tap(find.text('Devam').last, warnIfMissed: false);

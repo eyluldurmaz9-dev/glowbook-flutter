@@ -111,7 +111,8 @@ class PackagesCatalogContent extends StatelessWidget {
                     ? null
                     : () => AppNavigation.go(
                           context,
-                          '/packages/${package.serviceId}/${package.id}',
+                          '/packages/${package.serviceId}/${package.id}'
+                          '?origin=catalog',
                         ),
               ),
               const SizedBox(height: 12),

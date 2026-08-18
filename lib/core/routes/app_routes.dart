@@ -13,7 +13,6 @@ class AppRoutes {
   static const String packageDetail = '/packages/:serviceId/:packageId';
   static const String appointment = '/appointment';
   static const String calendar = '/calendar';
-  static const String employeeSelection = '/employees/select';
   static const String notification = '/notification';
   static const String profile = '/profile';
   static const String customerDashboard = '/customer/dashboard';

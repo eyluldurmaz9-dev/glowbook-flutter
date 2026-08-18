@@ -55,8 +55,14 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
   CatalogService? _service;
   CatalogOption? _option;
   CustomerPackageOption? _customerPackage;
-  String? _packageEmployeeId;
-  String? _packageEmployeeName;
+
+  /// Employee chosen before tarih/saat, for both normal and package booking.
+  /// Null while [_firstAvailable] is true — "İlk Müsait Zaman" doesn't commit
+  /// to one employee until a specific (date, time, employee) slot is picked
+  /// at the saat step, which is what resolves [_slot] to a real employee.
+  String? _employeeId;
+  String? _employeeName;
+  bool _firstAvailable = false;
   var _candidateDates = <DateTime>[
     BookingDateUtils.today().add(const Duration(days: 1)),
   ];
@@ -109,18 +115,21 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     });
   }
 
-  /// Normal booking keeps its original order. Package booking drops the service
-  /// step entirely and asks for the covered sub-service only when the package
-  /// genuinely covers more than one.
+  /// Employee is chosen before tarih/saat in both flows: picking who provides
+  /// the service first is what makes tarih/saat show that employee's actual
+  /// availability instead of an arbitrary combined list. Package booking
+  /// drops the service step entirely (the package already fixed it) and
+  /// asks for the covered sub-service only when the package genuinely covers
+  /// more than one.
   List<BookingStepKind> get _stepKinds {
     final context = _packageContext;
     if (context == null) {
       return const [
         BookingStepKind.service,
         BookingStepKind.option,
+        BookingStepKind.employee,
         BookingStepKind.date,
         BookingStepKind.time,
-        BookingStepKind.employee,
         BookingStepKind.summary,
       ];
     }
@@ -194,25 +203,11 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
                       subtitle: _packageMode
                           ? '${_packageContext!.packageName ?? 'Paketin'} için personelini, tarihini ve saatini seç.'
                           : 'Hizmetini seç, sana uygun saati kolayca planla.',
-                      action: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GlowIconButton(
-                            icon: Icons.calendar_month_outlined,
-                            tooltip: 'Takvim',
-                            onPressed: () =>
-                                AppNavigation.go(context, AppRoutes.calendar),
-                          ),
-                          const SizedBox(width: 8),
-                          GlowIconButton(
-                            icon: Icons.badge_outlined,
-                            tooltip: 'Personel seç',
-                            onPressed: () => AppNavigation.go(
-                              context,
-                              AppRoutes.employeeSelection,
-                            ),
-                          ),
-                        ],
+                      action: GlowIconButton(
+                        icon: Icons.calendar_month_outlined,
+                        tooltip: 'Takvim',
+                        onPressed: () =>
+                            AppNavigation.go(context, AppRoutes.calendar),
                       ),
                     ),
                     BookingStepper(currentStep: _step, steps: _stepLabels),
@@ -385,7 +380,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           selectedDate: _date,
           selectedTime: _time,
           selectedEmployeeId: _slot?.employeeId,
-          onlyEmployeeId: _packageMode ? _packageEmployeeId : null,
+          onlyEmployeeId: _firstAvailable ? null : _employeeId,
           onTimeSelected: (choice) => setState(() {
             _date = choice.date;
             _time = choice.time;
@@ -396,35 +391,34 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           joiningWaitlist: _joiningWaitlist,
         );
       case BookingStepKind.employee:
-        if (_packageMode) {
-          final serviceId = _service?.id;
-          final optionId = _option?.id;
-          if (serviceId == null || optionId == null) {
-            return const GlowEmptyState(title: 'Önce paket hizmetini seç');
-          }
-          return _PackageEmployeeStep(
-            employees: ref.watch(employeesByServiceOptionProvider(
-              EmployeeServiceOptionQuery(
-                serviceId: serviceId,
-                optionId: optionId,
-              ),
-            )),
-            selectedEmployeeId: _packageEmployeeId,
-            onSelected: (id, name) => setState(() {
-              _packageEmployeeId = id;
-              _packageEmployeeName = name;
-              _time = null;
-              _slot = null;
-            }),
-          );
+        final serviceId = _service?.id;
+        final optionId = _option?.id;
+        if (serviceId == null || optionId == null) {
+          return const GlowEmptyState(title: 'Önce hizmeti seç');
         }
-        return _EmployeeStep(
-          slots: slots,
-          selectedDate: _date,
-          selectedTime: _time,
-          selectedSlot: _slot,
-          onSelected: (slot) => setState(() => _slot = slot),
-          onRetry: _refreshSlots,
+        return _EmployeeSelectionStep(
+          employees: ref.watch(employeesByServiceOptionProvider(
+            EmployeeServiceOptionQuery(
+              serviceId: serviceId,
+              optionId: optionId,
+            ),
+          )),
+          selectedEmployeeId: _employeeId,
+          firstAvailableSelected: _firstAvailable,
+          onEmployeeSelected: (id, name) => setState(() {
+            _employeeId = id;
+            _employeeName = name;
+            _firstAvailable = false;
+            _time = null;
+            _slot = null;
+          }),
+          onFirstAvailableSelected: () => setState(() {
+            _employeeId = null;
+            _employeeName = null;
+            _firstAvailable = true;
+            _time = null;
+            _slot = null;
+          }),
         );
       case BookingStepKind.summary:
         return _SummaryStep(
@@ -435,8 +429,10 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           packageContext: _packageContext,
           date: _date,
           time: _time,
-          employeeName:
-              _packageMode ? _packageEmployeeName : _slot?.employeeName,
+          // By the summary step _slot is always resolved to a real employee
+          // (see _canContinue's summary case) — even after "İlk Müsait
+          // Zaman", so this never falls back to the placeholder employee name.
+          employeeName: _slot?.employeeName ?? _employeeName,
           slot: _slot,
           guestNameController: _guestNameController,
           guestSurnameController: _guestSurnameController,
@@ -465,8 +461,9 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     setState(() {
       _option = option;
       _packageContext = _packageContext?.withOption(optionId);
-      _packageEmployeeId = null;
-      _packageEmployeeName = null;
+      _employeeId = null;
+      _employeeName = null;
+      _firstAvailable = false;
       _time = null;
       _slot = null;
     });
@@ -477,6 +474,9 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
       _service = service;
       _option = null;
       _customerPackage = null;
+      _employeeId = null;
+      _employeeName = null;
+      _firstAvailable = false;
       _time = null;
       _slot = null;
       _result = null;
@@ -518,9 +518,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
       case BookingStepKind.time:
         return _time != null;
       case BookingStepKind.employee:
-        return _packageMode
-            ? _packageEmployeeId?.isNotEmpty == true
-            : _slot?.employeeId.isNotEmpty == true;
+        return _firstAvailable || _employeeId?.isNotEmpty == true;
       case BookingStepKind.summary:
         return _service?.id != null &&
             _option?.id != null &&
@@ -763,8 +761,9 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
       _service = null;
       _option = null;
       _customerPackage = null;
-      _packageEmployeeId = null;
-      _packageEmployeeName = null;
+      _employeeId = null;
+      _employeeName = null;
+      _firstAvailable = false;
       _candidateDates = [tomorrow];
       _date = tomorrow;
       _time = null;
@@ -872,9 +871,9 @@ class BookingStepper extends StatelessWidget {
     this.steps = const [
       'Hizmet',
       'Seçenek',
+      'Personel',
       'Tarih',
       'Saat',
-      'Personel',
       'Özet'
     ],
   });
@@ -1234,17 +1233,26 @@ class _CoveredOptionStep extends StatelessWidget {
   }
 }
 
-/// Employee picker for the package flow, shown before tarih/saat.
-class _PackageEmployeeStep extends StatelessWidget {
-  const _PackageEmployeeStep({
+/// Employee picker shown before tarih/saat, for both normal and package
+/// booking. Always offers "İlk Müsait Zaman" alongside every employee
+/// qualified for the selected service/option — picking it defers the actual
+/// employee choice to whichever slot the customer picks at the saat step
+/// (see [_TimeStep]'s `onlyEmployeeId: null` behavior), so the customer never
+/// has to know or care who that ends up being in advance.
+class _EmployeeSelectionStep extends StatelessWidget {
+  const _EmployeeSelectionStep({
     required this.employees,
     required this.selectedEmployeeId,
-    required this.onSelected,
+    required this.firstAvailableSelected,
+    required this.onEmployeeSelected,
+    required this.onFirstAvailableSelected,
   });
 
   final AsyncValue<List<Map<String, dynamic>>> employees;
   final String? selectedEmployeeId;
-  final void Function(String employeeId, String employeeName) onSelected;
+  final bool firstAvailableSelected;
+  final void Function(String employeeId, String employeeName) onEmployeeSelected;
+  final VoidCallback onFirstAvailableSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -1256,26 +1264,36 @@ class _PackageEmployeeStep extends StatelessWidget {
             .map(_toEmployeeChoice)
             .whereType<_EmployeeChoice>()
             .toList(growable: false);
-        if (people.isEmpty) {
-          return const GlowEmptyState(
-            title: 'Personel bulunamadı',
-            message: 'Bu hizmet için şu an uygun personel yok.',
-            icon: Icons.person_off_outlined,
-          );
-        }
         return Column(
-          key: const Key('package_employee_step'),
+          key: const Key('employee_selection_step'),
           children: [
-            for (final person in people) ...[
-              _SelectableTile(
-                title: person.name,
-                subtitle: 'Bu personelle devam et',
-                icon: Icons.person_outline,
-                selected: selectedEmployeeId == person.id,
-                onTap: () => onSelected(person.id, person.name),
-              ),
-              const SizedBox(height: 10),
-            ],
+            _SelectableTile(
+              key: const Key('employee_first_available'),
+              title: 'İlk Müsait Zaman',
+              subtitle: 'Uygun ilk uzmanla devam et',
+              icon: Icons.bolt_outlined,
+              selected: firstAvailableSelected,
+              onTap: onFirstAvailableSelected,
+            ),
+            const SizedBox(height: 10),
+            if (people.isEmpty)
+              const GlowEmptyState(
+                title: 'Personel bulunamadı',
+                message: 'Bu hizmet için şu an uygun personel yok.',
+                icon: Icons.person_off_outlined,
+              )
+            else
+              for (final person in people) ...[
+                _SelectableTile(
+                  title: person.name,
+                  subtitle: 'Bu personelle devam et',
+                  icon: Icons.person_outline,
+                  selected:
+                      !firstAvailableSelected && selectedEmployeeId == person.id,
+                  onTap: () => onEmployeeSelected(person.id, person.name),
+                ),
+                const SizedBox(height: 10),
+              ],
           ],
         );
       },
@@ -1510,68 +1528,6 @@ class BookingTimeChoice {
   final BookingSlot slot;
 }
 
-class _EmployeeStep extends StatelessWidget {
-  const _EmployeeStep({
-    required this.slots,
-    required this.selectedDate,
-    required this.selectedTime,
-    required this.selectedSlot,
-    required this.onSelected,
-    required this.onRetry,
-  });
-
-  final AsyncValue<List<Map<String, dynamic>>>? slots;
-  final DateTime selectedDate;
-  final String? selectedTime;
-  final BookingSlot? selectedSlot;
-  final ValueChanged<BookingSlot> onSelected;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    if (selectedTime == null) {
-      return const GlowEmptyState(title: 'Önce saat seç');
-    }
-    if (slots == null) return const GlowEmptyState(title: 'Önce hizmet seç');
-    return slots!.when(
-      loading: () => const GlowLoading(message: 'Personel uygunluğu alınıyor'),
-      error: (error, _) => GlowError(
-        message: bookingErrorMessage(error)!,
-        onRetry: onRetry,
-      ),
-      data: (items) {
-        final employees = mapBookingSlots(items)
-            .where((slot) =>
-                BookingDateUtils.formatDate(slot.date) ==
-                    BookingDateUtils.formatDate(selectedDate) &&
-                slot.hasTime(selectedTime!))
-            .toList(growable: false);
-        if (employees.isEmpty) {
-          return const GlowEmptyState(
-            title: 'Personel bulunamadı',
-            message: 'Seçilen saat için uygun personel bulunamadı.',
-          );
-        }
-        return Column(
-          children: [
-            for (final slot in employees) ...[
-              _SelectableTile(
-                title: slot.employeeName,
-                subtitle:
-                    '${BookingDateUtils.formatDate(selectedDate)} - $selectedTime',
-                icon: Icons.person_outline,
-                selected: selectedSlot?.employeeId == slot.employeeId,
-                onTap: () => onSelected(slot),
-              ),
-              const SizedBox(height: 10),
-            ],
-          ],
-        );
-      },
-    );
-  }
-}
-
 class _SummaryStep extends StatelessWidget {
   const _SummaryStep({
     required this.signedIn,
@@ -1740,6 +1696,7 @@ class _ActionBar extends StatelessWidget {
 
 class _SelectableTile extends StatelessWidget {
   const _SelectableTile({
+    super.key,
     required this.title,
     required this.subtitle,
     required this.icon,

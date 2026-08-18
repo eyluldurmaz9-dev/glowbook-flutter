@@ -16,6 +16,19 @@ class AppNavigation {
     context.go(route);
   }
 
+  /// Pops the current page when there is something to pop back to; otherwise
+  /// falls back to [fallback]. Needed because every forward navigation in
+  /// this app goes through [go] (which replaces the route stack, GoRouter's
+  /// `go()` semantics), so a screen reached that way has nothing left in the
+  /// Navigator for a plain `Navigator.pop()`/`maybePop()` to return to.
+  static void back(BuildContext context, {required String fallback}) {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      context.go(fallback);
+    }
+  }
+
   static void goBottomTab(BuildContext context, int index) {
     if (index < 0 || index >= AppRoutes.bottomNavigationRoutes.length) {
       return;

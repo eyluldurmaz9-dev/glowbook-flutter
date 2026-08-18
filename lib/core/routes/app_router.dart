@@ -11,7 +11,6 @@ import '../../features/appointment/calendar_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/notification/notification_page.dart';
 import '../../features/employee/employee_page.dart';
-import '../../features/employee/employee_selection_page.dart';
 import '../../features/service/services_page.dart';
 import '../../features/service/service_detail_page.dart';
 import '../../features/package/packages_page.dart';
@@ -67,7 +66,11 @@ final appRouter = GoRouter(
             int.tryParse(state.pathParameters['serviceId'] ?? '') ?? 0;
         final packageId =
             int.tryParse(state.pathParameters['packageId'] ?? '') ?? 0;
-        return PackageDetailPage(serviceId: serviceId, packageId: packageId);
+        return PackageDetailPage(
+          serviceId: serviceId,
+          packageId: packageId,
+          origin: state.queryParameters['origin'],
+        );
       },
     ),
     GoRoute(
@@ -82,9 +85,6 @@ final appRouter = GoRouter(
     GoRoute(
         path: AppRoutes.calendar,
         builder: (context, state) => const CalendarPage()),
-    GoRoute(
-        path: AppRoutes.employeeSelection,
-        builder: (context, state) => const EmployeeSelectionPage()),
     GoRoute(
         path: AppRoutes.profile,
         builder: (context, state) => const ProfilePage()),

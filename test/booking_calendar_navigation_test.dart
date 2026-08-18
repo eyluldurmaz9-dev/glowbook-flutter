@@ -258,6 +258,11 @@ Future<void> _pumpToDateStep(
           ),
         ),
         customerPackagesProvider.overrideWith((ref, customerId) async => const []),
+        employeesByServiceOptionProvider.overrideWith(
+          (ref, query) async => const [
+            {'employeeId': 'EMP-1', 'employeeName': 'Elif Yılmaz'},
+          ],
+        ),
         availableSlotsProvider.overrideWith((ref, query) async {
           if (availableTimesForSeptember != null &&
               query.date.startsWith('2026-09')) {
@@ -297,6 +302,16 @@ Future<void> _pumpToDateStep(
   await tester.tap(find.text('Cilt Bakımı'), warnIfMissed: false);
   await tester.pumpAndSettle();
   await tester.ensureVisible(find.text('Paket 10'));
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(find.text('Devam').last);
+  await tester.tap(find.text('Devam').last, warnIfMissed: false);
+  await tester.pumpAndSettle();
+
+  // Personel now comes before Tarih — pick "İlk Müsait Zaman" to reach the
+  // calendar step this file actually regresses.
+  expect(find.text('Personel seçimi'), findsOneWidget);
+  await tester.ensureVisible(find.text('İlk Müsait Zaman'));
+  await tester.tap(find.text('İlk Müsait Zaman'), warnIfMissed: false);
   await tester.pumpAndSettle();
   await tester.ensureVisible(find.text('Devam').last);
   await tester.tap(find.text('Devam').last, warnIfMissed: false);

@@ -14,10 +14,32 @@ class PackageDetailPage extends ConsumerWidget {
     super.key,
     required this.serviceId,
     required this.packageId,
+    this.origin,
   });
 
   final int serviceId;
   final int packageId;
+
+  /// Where this page was opened from, so Back returns to the logical
+  /// previous screen instead of a dead button (see [AppNavigation.back]).
+  /// `'profile'` -> Paketlerim, `'catalog'` -> the packages catalog list,
+  /// `'home'` -> the public landing page. Anything else (including null,
+  /// the default when a link is opened directly) falls back to this
+  /// package's own service detail page, which every entry point shares.
+  final String? origin;
+
+  String get _backFallback {
+    switch (origin) {
+      case 'profile':
+        return AppRoutes.profile;
+      case 'catalog':
+        return AppRoutes.packages;
+      case 'home':
+        return AppRoutes.home;
+      default:
+        return serviceId > 0 ? '/services/$serviceId' : AppRoutes.packages;
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -44,7 +66,10 @@ class PackageDetailPage extends ConsumerWidget {
                   icon: Icons.inventory_2_outlined,
                 );
               }
-              return _PackageDetailContent(package: package);
+              return _PackageDetailContent(
+                package: package,
+                backFallback: _backFallback,
+              );
             },
           ),
         ),
@@ -64,9 +89,10 @@ CatalogPackage? _firstMatchingPackage(
 }
 
 class _PackageDetailContent extends ConsumerStatefulWidget {
-  const _PackageDetailContent({required this.package});
+  const _PackageDetailContent({required this.package, required this.backFallback});
 
   final CatalogPackage package;
+  final String backFallback;
 
   @override
   ConsumerState<_PackageDetailContent> createState() =>
@@ -150,7 +176,8 @@ class _PackageDetailContentState extends ConsumerState<_PackageDetailContent> {
             GlowIconButton(
               icon: Icons.chevron_left,
               tooltip: 'Geri',
-              onPressed: () => Navigator.of(context).maybePop(),
+              onPressed: () =>
+                  AppNavigation.back(context, fallback: widget.backFallback),
             ),
             const Spacer(),
             const GlowBrand(compact: true),

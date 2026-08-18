@@ -58,7 +58,10 @@ void main() {
       (tester) async {
     await _pumpProfile(tester, backend: _FakeCustomerBackend());
 
-    await _tapText(tester, 'Düzenle');
+    // "Düzenle" also now labels each upcoming appointment's edit action
+    // (rendered above this row) — `last: true` picks the profile's own
+    // edit-mode toggle, not an appointment card's.
+    await _tapText(tester, 'Düzenle', last: true);
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextFormField, 'Ad'), '');
     await tester.enterText(find.widgetWithText(TextFormField, 'Şifre'), '123');

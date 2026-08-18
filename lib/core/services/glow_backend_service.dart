@@ -353,6 +353,16 @@ class GlowBackendService implements AuthBackend {
     return _patchMap('/api/appointments/$appointmentId/time', payload);
   }
 
+  /// Customer self-service reschedule (date/time, optionally employee).
+  /// Unlike [updateAppointmentTime] (staff-only), this is open to the
+  /// appointment's own customer.
+  Future<Map<String, dynamic>> rescheduleAppointment(
+    int appointmentId,
+    Map<String, dynamic> payload,
+  ) {
+    return _patchMap('/api/appointments/$appointmentId/reschedule', payload);
+  }
+
   Future<List<Map<String, dynamic>>> getNotifications(int customerId) {
     return _getList('/api/notifications/customer/$customerId');
   }

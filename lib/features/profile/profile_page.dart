@@ -6,6 +6,7 @@ import '../../core/navigation/app_navigation.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/widgets/glow_widgets.dart';
 import '../../providers/app_providers.dart';
+import '../appointment/appointment_edit_sheet.dart';
 import '../appointment/booking_models.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -308,7 +309,8 @@ class _MyPackagesSection extends ConsumerWidget {
                         // a second one.
                         : () => AppNavigation.go(
                               context,
-                              '/packages/${item.serviceId}/${item.packageId}',
+                              '/packages/${item.serviceId}/${item.packageId}'
+                              '?origin=profile',
                             ),
                     child: GlowCard(
                       padding: const EdgeInsets.all(15),
@@ -381,16 +383,28 @@ class _MyPackagesSection extends ConsumerWidget {
 /// "Randevularım" split into Yaklaşan / Geçmiş. The split is decided by the
 /// backend against business time, so an appointment whose hour has passed
 /// moves to Geçmiş on the next refresh without any manual status change.
-class _MyAppointmentsSection extends ConsumerWidget {
+/// Only Yaklaşan entries offer Düzenle/İptal Et — a past appointment can't
+/// be changed.
+class _MyAppointmentsSection extends ConsumerStatefulWidget {
   const _MyAppointmentsSection({required this.customerId});
 
   final int customerId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MyAppointmentsSection> createState() =>
+      _MyAppointmentsSectionState();
+}
+
+class _MyAppointmentsSectionState
+    extends ConsumerState<_MyAppointmentsSection> {
+  int? _busyAppointmentId;
+
+  @override
+  Widget build(BuildContext context) {
     final upcoming =
-        ref.watch(customerUpcomingAppointmentsProvider(customerId));
-    final past = ref.watch(customerPastAppointmentsProvider(customerId));
+        ref.watch(customerUpcomingAppointmentsProvider(widget.customerId));
+    final past =
+        ref.watch(customerPastAppointmentsProvider(widget.customerId));
     return Column(
       key: const Key('profile_my_appointments'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -406,11 +420,7 @@ class _MyAppointmentsSection extends ConsumerWidget {
             GlowIconButton(
               tooltip: 'Randevuları yenile',
               icon: Icons.refresh,
-              onPressed: () {
-                ref.invalidate(
-                    customerUpcomingAppointmentsProvider(customerId));
-                ref.invalidate(customerPastAppointmentsProvider(customerId));
-              },
+              onPressed: _refresh,
             ),
           ],
         ),
@@ -419,15 +429,98 @@ class _MyAppointmentsSection extends ConsumerWidget {
           title: 'Yaklaşan Randevular',
           emptyTitle: 'Yaklaşan randevun yok',
           value: upcoming,
+          canManage: true,
+          busyAppointmentId: _busyAppointmentId,
+          onEdit: _editAppointment,
+          onCancel: _cancelAppointment,
         ),
         const SizedBox(height: 14),
         _AppointmentGroup(
           title: 'Geçmiş Randevular',
           emptyTitle: 'Geçmiş randevun yok',
           value: past,
+          canManage: false,
         ),
       ],
     );
+  }
+
+  void _refresh() {
+    ref.invalidate(customerUpcomingAppointmentsProvider(widget.customerId));
+    ref.invalidate(customerPastAppointmentsProvider(widget.customerId));
+  }
+
+  Future<void> _editAppointment(Map<String, dynamic> appointment) async {
+    final appointmentId = _intValue(appointment['appointmentId']);
+    final serviceId = _intValue(appointment['serviceId']);
+    final optionId = _intValue(appointment['optionId']);
+    final employeeId = appointment['employeeId']?.toString();
+    final date = BookingDateUtils.parseDate(appointment['appointmentDate']);
+    final time = BookingDateUtils.normalizeTime(appointment['appointmentTime']);
+    if (appointmentId == null ||
+        serviceId == null ||
+        optionId == null ||
+        employeeId == null ||
+        date == null ||
+        time == null) {
+      GlowSnackBar.showError(context, 'Randevu bilgileri eksik.');
+      return;
+    }
+
+    final saved = await showAppointmentEditSheet(
+      context,
+      appointmentId: appointmentId,
+      serviceId: serviceId,
+      optionId: optionId,
+      serviceLabel: appointment['serviceName']?.toString() ?? 'Randevu',
+      currentEmployeeId: employeeId,
+      currentEmployeeName: appointment['employeeName']?.toString() ?? employeeId,
+      initialDate: date,
+      initialTime: time,
+    );
+    if (saved == true && mounted) {
+      _refresh();
+      GlowSnackBar.showSuccess(context, 'Randevu güncellendi.');
+    }
+  }
+
+  Future<void> _cancelAppointment(Map<String, dynamic> appointment) async {
+    final appointmentId = _intValue(appointment['appointmentId']);
+    if (appointmentId == null) return;
+
+    final confirmed = await GlowDialog.showConfirmation(
+      context,
+      title: 'Randevuyu iptal et',
+      message: 'Randevunu iptal etmek istediğine emin misin?',
+      confirmLabel: 'Randevuyu İptal Et',
+      cancelLabel: 'Vazgeç',
+      danger: true,
+    );
+    if (confirmed != true) return;
+
+    setState(() => _busyAppointmentId = appointmentId);
+    try {
+      await ref.read(glowBackendServiceProvider).cancelAppointment(
+            appointmentId,
+            cancellationReason: 'Müşteri tarafından iptal edildi',
+          );
+      _refresh();
+      if (mounted) {
+        GlowSnackBar.showSuccess(context, 'Randevu iptal edildi.');
+      }
+    } catch (error) {
+      if (mounted) {
+        GlowSnackBar.showError(context, bookingErrorMessage(error) ?? '$error');
+      }
+    } finally {
+      if (mounted) setState(() => _busyAppointmentId = null);
+    }
+  }
+
+  int? _intValue(Object? value) {
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 }
 
@@ -436,11 +529,19 @@ class _AppointmentGroup extends StatelessWidget {
     required this.title,
     required this.emptyTitle,
     required this.value,
+    required this.canManage,
+    this.busyAppointmentId,
+    this.onEdit,
+    this.onCancel,
   });
 
   final String title;
   final String emptyTitle;
   final AsyncValue<List<Map<String, dynamic>>> value;
+  final bool canManage;
+  final int? busyAppointmentId;
+  final ValueChanged<Map<String, dynamic>>? onEdit;
+  final ValueChanged<Map<String, dynamic>>? onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -463,6 +564,32 @@ class _AppointmentGroup extends StatelessWidget {
                         time:
                             '${item['appointmentDate'] ?? ''} ${BookingDateUtils.normalizeTime(item['appointmentTime']) ?? ''}'
                             '${item['status']?.toString().toUpperCase() == 'CANCELLED' ? ' • İptal edildi' : ''}',
+                        actions: !canManage ||
+                                item['status']?.toString().toUpperCase() ==
+                                    'CANCELLED'
+                            ? null
+                            : [
+                                TextButton(
+                                  key: Key(
+                                      'edit_appointment_${item['appointmentId']}'),
+                                  onPressed:
+                                      busyAppointmentId == item['appointmentId']
+                                          ? null
+                                          : () => onEdit?.call(item),
+                                  child: const Text('Düzenle'),
+                                ),
+                                TextButton(
+                                  key: Key(
+                                      'cancel_appointment_${item['appointmentId']}'),
+                                  onPressed:
+                                      busyAppointmentId == item['appointmentId']
+                                          ? null
+                                          : () => onCancel?.call(item),
+                                  style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.action),
+                                  child: const Text('İptal Et'),
+                                ),
+                              ],
                       ),
                       const SizedBox(height: 10),
                     ],

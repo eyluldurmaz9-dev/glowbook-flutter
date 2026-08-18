@@ -365,7 +365,8 @@ class _PublicPackagesSection extends StatelessWidget {
                     onTap: package.id == null || package.serviceId == null
                         ? null
                         : () => AppNavigation.go(context,
-                            '/packages/${package.serviceId}/${package.id}'),
+                            '/packages/${package.serviceId}/${package.id}'
+                            '?origin=home'),
                   ),
               ]);
         },

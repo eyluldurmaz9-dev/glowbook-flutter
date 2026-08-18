@@ -41,6 +41,14 @@ void main() {
     await tester.pumpAndSettle();
     await _tapText(tester, 'Devam', last: true);
     await tester.pumpAndSettle();
+    // "İlk Müsait Zaman" keeps every qualified employee's hours on the saat
+    // step instead of filtering down to one — that's what this test checks.
+    await _tapText(tester, 'İlk Müsait Zaman');
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Devam', last: true);
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Devam', last: true);
+    await tester.pumpAndSettle();
 
     expect(find.textContaining('10:30'), findsNothing);
     expect(find.textContaining('Elif Yılmaz'), findsOneWidget);
@@ -136,6 +144,10 @@ void main() {
     await tester.pumpAndSettle();
     await _tapText(tester, 'Devam', last: true);
     await tester.pumpAndSettle();
+    await _tapText(tester, 'İlk Müsait Zaman');
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Devam', last: true);
+    await tester.pumpAndSettle();
     await _tapText(tester, 'Devam', last: true);
     await tester.pumpAndSettle();
     await _tapText(tester, 'Bekleme Listesine Katıl');
@@ -202,6 +214,17 @@ Future<GoRouter> _pumpBooking(
           ])
       .map((slot) => {'appointmentDate': slotDate, ...slot})
       .toList();
+  // The employee step now runs before tarih/saat, so it needs its own
+  // qualified-employee list independent of slot availability — derive it
+  // from the same fixture so existing per-test `slots` overrides keep
+  // driving both the employee choices and the saat step consistently.
+  final employeeChoices = [
+    for (final slot in effectiveSlots)
+      {
+        'employeeId': slot['employeeId'],
+        'employeeName': slot['employeeName'],
+      },
+  ];
   final router = GoRouter(
     initialLocation: AppRoutes.appointment,
     routes: [
@@ -249,6 +272,8 @@ Future<GoRouter> _pumpBooking(
         ),
         servicePackagesProvider
             .overrideWith((ref, serviceId) async => const []),
+        employeesByServiceOptionProvider
+            .overrideWith((ref, query) async => employeeChoices),
         customerPackagesProvider
             .overrideWith((ref, customerId) async => backend.packages),
         availableSlotsProvider
@@ -287,13 +312,13 @@ Future<void> _completeSelections(WidgetTester tester) async {
   await tester.pumpAndSettle();
   await _tapText(tester, 'Devam', last: true);
   await tester.pumpAndSettle();
+  await _tapText(tester, 'Elif Yılmaz');
+  await tester.pumpAndSettle();
+  await _tapText(tester, 'Devam', last: true);
+  await tester.pumpAndSettle();
   await _tapText(tester, 'Devam', last: true);
   await tester.pumpAndSettle();
   await _tapTextContaining(tester, '10:00');
-  await tester.pumpAndSettle();
-  await _tapText(tester, 'Devam', last: true);
-  await tester.pumpAndSettle();
-  await _tapText(tester, 'Elif Yılmaz');
   await tester.pumpAndSettle();
   await _tapText(tester, 'Devam', last: true);
   await tester.pumpAndSettle();

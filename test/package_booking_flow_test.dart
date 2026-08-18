@@ -33,7 +33,7 @@ void main() {
     expect(find.text('Personel seçimi'), findsOneWidget);
     expect(find.text('Hizmet seçimi'), findsNothing);
     expect(find.text('Alt hizmet ve paket'), findsNothing);
-    expect(find.byKey(const Key('package_employee_step')), findsOneWidget);
+    expect(find.byKey(const Key('employee_selection_step')), findsOneWidget);
 
     // The already made choice stays visible instead of being asked again.
     expect(find.byKey(const Key('package_booking_context')), findsOneWidget);

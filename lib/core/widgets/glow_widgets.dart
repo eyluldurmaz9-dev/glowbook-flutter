@@ -1346,6 +1346,7 @@ class GlowAppointmentCard extends StatelessWidget {
     this.subtitle,
     this.status,
     this.onTap,
+    this.actions,
   });
 
   final String title;
@@ -1354,45 +1355,63 @@ class GlowAppointmentCard extends StatelessWidget {
   final String? status;
   final VoidCallback? onTap;
 
+  /// Optional trailing action row (e.g. Düzenle / İptal Et) shown below the
+  /// main content — only rendered when non-empty, so callers with nothing to
+  /// offer (past appointments) keep the plain card.
+  final List<Widget>? actions;
+
   @override
   Widget build(BuildContext context) {
     return GlowCard(
       onTap: onTap,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const GlowMark(icon: Icons.calendar_today_outlined, size: 40),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleMedium),
-                if (subtitle != null) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
-                ],
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Row(
             children: [
-              Text(
-                time,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: AppColors.action,
-                    ),
-              ),
-              if (status != null) ...[
-                const SizedBox(height: AppSpacing.xs),
-                GlowPill(
-                  label: status!,
-                  color: AppColors.successDesign,
-                  background: AppColors.greenTint,
+              const GlowMark(icon: Icons.calendar_today_outlined, size: 40),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(subtitle!,
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ],
                 ),
-              ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    time,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: AppColors.action,
+                        ),
+                  ),
+                  if (status != null) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    GlowPill(
+                      label: status!,
+                      color: AppColors.successDesign,
+                      background: AppColors.greenTint,
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
+          if (actions != null && actions!.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: actions!,
+            ),
+          ],
         ],
       ),
     );

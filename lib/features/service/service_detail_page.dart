@@ -31,7 +31,10 @@ class ServiceDetailPage extends ConsumerWidget {
                   GlowIconButton(
                     icon: Icons.chevron_left,
                     tooltip: 'Geri',
-                    onPressed: () => Navigator.of(context).maybePop(),
+                    onPressed: () => AppNavigation.back(
+                      context,
+                      fallback: AppRoutes.services,
+                    ),
                   ),
                   const Spacer(),
                   const GlowBrand(compact: true),

@@ -345,6 +345,11 @@ Future<GoRouter> _pumpBooking(
             .overrideWith((ref, serviceId) async => const []),
         customerPackagesProvider
             .overrideWith((ref, customerId) async => const []),
+        employeesByServiceOptionProvider.overrideWith(
+          (ref, query) async => const [
+            {'employeeId': 'EMP-1', 'employeeName': 'Elif Yılmaz'},
+          ],
+        ),
         availableSlotsProvider
             .overrideWith((ref, query) async => effectiveSlots),
         customerUpcomingAppointmentsProvider.overrideWith(
@@ -386,13 +391,13 @@ Future<void> _completeSelections(
   await tester.pumpAndSettle();
   await _tapText(tester, 'Devam', last: true);
   await tester.pumpAndSettle();
+  await _tapText(tester, 'Elif Yılmaz');
+  await tester.pumpAndSettle();
+  await _tapText(tester, 'Devam', last: true);
+  await tester.pumpAndSettle();
   await _tapText(tester, 'Devam', last: true);
   await tester.pumpAndSettle();
   await _tapTextContaining(tester, '10:00');
-  await tester.pumpAndSettle();
-  await _tapText(tester, 'Devam', last: true);
-  await tester.pumpAndSettle();
-  await _tapText(tester, 'Elif Yılmaz');
   await tester.pumpAndSettle();
   await _tapText(tester, 'Devam', last: true);
   await tester.pumpAndSettle();
