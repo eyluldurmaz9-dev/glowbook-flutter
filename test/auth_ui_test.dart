@@ -21,6 +21,19 @@ void main() {
     expect(find.text('Şifre zorunludur.'), findsOneWidget);
   });
 
+  testWidgets(
+      'Web login\'e eklenen Ana Sayfa kontrolü mobil derlemede görünmez',
+      (tester) async {
+    // kIsWeb is false under the normal (non-web) test target this suite
+    // runs on, so this locks in that the new web-only home button never
+    // reaches the mobile build; its actual web-visible rendering is
+    // exercised by `flutter build web --release`, not a widget test, since
+    // kIsWeb can't be flipped at runtime in a VM test.
+    await tester.pumpWidget(_testApp(const LoginPage()));
+
+    expect(find.byKey(const Key('web_login_home')), findsNothing);
+  });
+
   testWidgets('Register form validation mesajlarını gösterir', (tester) async {
     await tester.pumpWidget(_testApp(const RegisterPage()));
 

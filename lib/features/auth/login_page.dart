@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -96,50 +97,69 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         child: GlowResponsivePage(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
           maxWidth: 980,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 760;
-              final form = _LoginCard(
-                formKey: _formKey,
-                usernameController: _usernameController,
-                passwordController: _passwordController,
-                usernameFocus: _usernameFocus,
-                passwordFocus: _passwordFocus,
-                role: _role,
-                submitted: _submitted,
-                isLoading: isLoading,
-                onRoleChanged: (value) => setState(() => _role = value),
-                onLogin: _login,
-              );
-              final intro = _AuthIntro(role: _role);
-              if (wide) {
-                return SingleChildScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minHeight: constraints.maxHeight),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Web-only: native mobile has its own separate back/home
+              // controls already, so this stays out of the mobile build.
+              if (kIsWeb) ...[
+                GlowIconButton(
+                  key: const Key('web_login_home'),
+                  icon: Icons.home_outlined,
+                  tooltip: 'Ana Sayfa',
+                  onPressed: () =>
+                      AppNavigation.go(context, AppRoutes.welcome),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final wide = constraints.maxWidth >= 760;
+                    final form = _LoginCard(
+                      formKey: _formKey,
+                      usernameController: _usernameController,
+                      passwordController: _passwordController,
+                      usernameFocus: _usernameFocus,
+                      passwordFocus: _passwordFocus,
+                      role: _role,
+                      submitted: _submitted,
+                      isLoading: isLoading,
+                      onRoleChanged: (value) => setState(() => _role = value),
+                      onLogin: _login,
+                    );
+                    final intro = _AuthIntro(role: _role);
+                    if (wide) {
+                      return SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(minHeight: constraints.maxHeight),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(child: intro),
+                              const SizedBox(width: 44),
+                              SizedBox(width: 430, child: form),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    return ListView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       children: [
-                        Expanded(child: intro),
-                        const SizedBox(width: 44),
-                        SizedBox(width: 430, child: form),
+                        intro,
+                        const SizedBox(height: 24),
+                        form,
                       ],
-                    ),
-                  ),
-                );
-              }
-              return ListView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                children: [
-                  intro,
-                  const SizedBox(height: 24),
-                  form,
-                ],
-              );
-            },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ),
