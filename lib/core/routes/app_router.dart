@@ -64,8 +64,11 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(
-        path: AppRoutes.packages,
-        builder: (context, state) => const PackagesPage()),
+      path: AppRoutes.packages,
+      builder: (context, state) => PackagesPage(
+        origin: state.queryParameters['origin'],
+      ),
+    ),
     GoRoute(
       path: AppRoutes.packageDetail,
       builder: (context, state) {

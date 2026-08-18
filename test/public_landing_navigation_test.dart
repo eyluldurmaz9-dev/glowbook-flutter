@@ -71,6 +71,116 @@ void main() {
     expect(publicLandingMarker(), findsOneWidget);
   });
 
+  group('Paketler — Ana Sayfa ve Geri yan yana', () {
+    testWidgets('Home ve Back butonları aynı anda görünür', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            allServicePackagesProvider.overrideWith((ref) async => const []),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: _routerStartingAt(AppRoutes.packages),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('packages_public_home')), findsOneWidget);
+      expect(find.byKey(const Key('packages_back')), findsOneWidget);
+    });
+
+    testWidgets(
+        'Hizmetler → Paketleri Gör → Geri sonucu Hizmetler ekranına döner',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            servicesProvider.overrideWith((ref) async => const [
+                  {
+                    'serviceId': 1,
+                    'serviceName': 'Hydrafacial',
+                    'description': 'Bakım',
+                  },
+                ]),
+            allServicePackagesProvider.overrideWith((ref) async => const []),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: _routerStartingAt(AppRoutes.services),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('services_open_packages')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('packages_back')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('packages_back')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hizmetleri keşfet'), findsOneWidget,
+          reason: 'Geri, gerçekten gelinen Hizmetler ekranına dönmeli');
+      expect(publicLandingMarker(), findsNothing);
+    });
+
+    testWidgets(
+        'Origin/history olmadan doğrudan Paketler açıldığında Geri Public Landing\'e düşer',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            allServicePackagesProvider.overrideWith((ref) async => const []),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            // Bottom-nav-style entry: no ?origin=, no Navigator history.
+            routerConfig: _routerStartingAt(AppRoutes.packages),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('packages_back')));
+      await tester.pumpAndSettle();
+
+      expect(publicLandingMarker(), findsOneWidget);
+    });
+
+    testWidgets('Paketler ekranının mevcut içeriği değişmedi', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            allServicePackagesProvider.overrideWith((ref) async => const [
+                  {
+                    'packageId': 5,
+                    'serviceId': 1,
+                    'serviceName': 'Hydrafacial',
+                    'packageName': '6 Seans',
+                    'description': 'Paket',
+                    'totalSession': 6,
+                    'price': 4800.0,
+                    'active': true,
+                  },
+                ]),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: _routerStartingAt(AppRoutes.packages),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // "Paketler" also labels the bottom-nav tab, so both matches confirm
+      // the existing content is intact rather than being ambiguous.
+      expect(find.text('Paketler'), findsWidgets);
+      expect(find.text('6 Seans'), findsOneWidget);
+      expect(find.text('Paket veya hizmet ara'), findsOneWidget);
+    });
+  });
+
   testWidgets('Misafir erişimi ekranı → Ana Sayfaya Dön → Public Landing',
       (tester) async {
     await tester.pumpWidget(
@@ -179,7 +289,9 @@ GoRouter _routerStartingAt(String initialLocation, {bool loginRoute = false}) {
       ),
       GoRoute(
         path: AppRoutes.packages,
-        builder: (context, state) => const PackagesPage(),
+        builder: (context, state) => PackagesPage(
+          origin: state.queryParameters['origin'],
+        ),
       ),
       GoRoute(
         path: AppRoutes.appointment,

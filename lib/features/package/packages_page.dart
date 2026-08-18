@@ -8,7 +8,18 @@ import '../../providers/app_providers.dart';
 import '../catalog/catalog_models.dart';
 
 class PackagesPage extends ConsumerStatefulWidget {
-  const PackagesPage({super.key});
+  const PackagesPage({super.key, this.origin});
+
+  /// Where this page was opened from, so Back returns to the logical
+  /// previous screen instead of relying on Navigator history — every
+  /// forward navigation in this app goes through `context.go()`, which
+  /// replaces the route stack (see [AppNavigation.back]), so a screen
+  /// reached that way has nothing to pop back to on its own. `'services'`
+  /// -> the services catalog. Anything else (including null, e.g. the
+  /// bottom-nav "Paketler" tab or a direct link) falls back to the public
+  /// landing page, the same safe default [AppNavigation.back] already uses
+  /// elsewhere.
+  final String? origin;
 
   @override
   ConsumerState<PackagesPage> createState() => _PackagesPageState();
@@ -22,6 +33,15 @@ class _PackagesPageState extends ConsumerState<PackagesPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  String get _backFallback {
+    switch (widget.origin) {
+      case 'services':
+        return AppRoutes.services;
+      default:
+        return AppRoutes.welcome;
+    }
   }
 
   @override
@@ -41,6 +61,7 @@ class _PackagesPageState extends ConsumerState<PackagesPage> {
             searchController: _searchController,
             query: _query,
             onQueryChanged: (value) => setState(() => _query = value),
+            backFallback: _backFallback,
           ),
         ),
       ),
@@ -59,12 +80,17 @@ class PackagesCatalogContent extends StatelessWidget {
     required this.searchController,
     required this.query,
     required this.onQueryChanged,
+    this.backFallback = AppRoutes.welcome,
   });
 
   final List<CatalogPackage> packages;
   final TextEditingController searchController;
   final String query;
   final ValueChanged<String> onQueryChanged;
+
+  /// Route Back falls back to when there's no Navigator history to pop —
+  /// see [PackagesPage.origin].
+  final String backFallback;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +107,14 @@ class PackagesCatalogContent extends StatelessWidget {
                 tooltip: 'Ana Sayfaya Dön',
                 onPressed: () =>
                     AppNavigation.go(context, AppRoutes.welcome),
+              ),
+              const SizedBox(width: 8),
+              GlowIconButton(
+                key: const Key('packages_back'),
+                icon: Icons.chevron_left,
+                tooltip: 'Geri',
+                onPressed: () =>
+                    AppNavigation.back(context, fallback: backFallback),
               ),
             ],
           ),

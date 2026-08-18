@@ -91,13 +91,19 @@ class ServicesCatalogContent extends StatelessWidget {
             action: GlowIconButton(
               icon: Icons.inventory_2_outlined,
               tooltip: 'Paketler',
-              onPressed: () => AppNavigation.go(context, AppRoutes.packages),
+              onPressed: () => AppNavigation.go(
+                context,
+                '${AppRoutes.packages}?origin=services',
+              ),
             ),
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
             key: const Key('services_open_packages'),
-            onPressed: () => AppNavigation.go(context, AppRoutes.packages),
+            onPressed: () => AppNavigation.go(
+              context,
+              '${AppRoutes.packages}?origin=services',
+            ),
             icon: const Icon(Icons.inventory_2_outlined),
             label: const Text('Paketleri Gör'),
           ),
