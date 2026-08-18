@@ -6,6 +6,7 @@ import 'package:glowbook_flutter/core/services/api_service.dart';
 import 'package:glowbook_flutter/core/services/glow_backend_service.dart';
 import 'package:glowbook_flutter/core/storage/secure_storage_service.dart';
 import 'package:glowbook_flutter/core/theme/app_theme.dart';
+import 'package:glowbook_flutter/core/widgets/glow_widgets.dart';
 import 'package:glowbook_flutter/features/dashboard/admin_dashboard_page.dart';
 import 'package:glowbook_flutter/providers/app_providers.dart';
 
@@ -29,6 +30,21 @@ void main() {
     expect(find.text('Genel Bakış'), findsWidgets);
     expect(find.text('Hizmetler'), findsWidgets);
     expect(find.text('Paketler'), findsWidgets);
+
+    addTearDown(() => _resetViewport(tester));
+  });
+
+  testWidgets(
+      'Backend destek kapsamı placeholder kartı kaldırıldı, diğer istatistikler kaldı',
+      (tester) async {
+    _setWideViewport(tester);
+    await _pumpAdmin(tester, backend: _FakeAdminBackend());
+
+    expect(find.text('Backend destek kapsamı'), findsNothing);
+    expect(find.text('Hizmetler'), findsWidgets);
+    expect(find.text('Paketler'), findsWidgets);
+    expect(find.text('Personel'), findsWidgets);
+    expect(find.text('Müşteriler'), findsWidgets);
 
     addTearDown(() => _resetViewport(tester));
   });
@@ -196,6 +212,26 @@ void main() {
       find.text('Bu kayıt başka bir veriyle çakışıyor. Bilgileri kontrol et.'),
       findsOneWidget,
     );
+    addTearDown(() => _resetViewport(tester));
+  });
+
+  testWidgets(
+      'Hizmet kartı görseli 16/9 AspectRatio içinde render edilir (mobil/web kırpma regresyonu)',
+      (tester) async {
+    _setWideViewport(tester);
+    await _pumpAdmin(tester, backend: _FakeAdminBackend());
+
+    await tester.tap(find.byKey(const Key('admin_nav_services')));
+    await tester.pumpAndSettle();
+
+    final image = tester.widget<GlowCatalogImage>(
+      find.byType(GlowCatalogImage).first,
+    );
+    final aspectRatio = tester.widget<AspectRatio>(find.ancestor(
+      of: find.byWidget(image),
+      matching: find.byType(AspectRatio),
+    ));
+    expect(aspectRatio.aspectRatio, 16 / 9);
     addTearDown(() => _resetViewport(tester));
   });
 

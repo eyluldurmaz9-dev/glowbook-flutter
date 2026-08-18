@@ -139,6 +139,35 @@ void main() {
     expect(find.textContaining('İptal edildi'), findsOneWidget);
   });
 
+  testWidgets(
+      'Düzenle/Kaydet kişisel bilgiler bölümünün altında, paket ve randevu listelerinden önce görünür',
+      (tester) async {
+    await _pumpProfile(
+      tester,
+      upcoming: List.generate(
+        20,
+        (index) => {
+          'appointmentId': index,
+          'serviceName': 'Hizmet $index',
+          'optionName': 'Seçenek',
+          'appointmentDate': '2026-09-${(index % 28) + 1}',
+          'appointmentTime': '10:00:00',
+          'status': 'PENDING',
+        },
+      ),
+    );
+
+    final editButtonY = tester.getTopLeft(find.text('Düzenle').first).dy;
+    final packagesHeaderY = tester.getTopLeft(find.text('Paketlerim')).dy;
+    final appointmentsHeaderY = tester.getTopLeft(find.text('Randevularım')).dy;
+
+    expect(editButtonY, lessThan(packagesHeaderY),
+        reason: 'Düzenle, Paketlerim bölümünden önce gelmeli');
+    expect(editButtonY, lessThan(appointmentsHeaderY),
+        reason: 'Düzenle, Randevularım bölümünden önce gelmeli — '
+            '20 randevu olsa bile aşağı kaydırmadan erişilebilir olmalı');
+  });
+
   testWidgets('Profil ekranında teknik terim sızmaz', (tester) async {
     await _pumpProfile(
       tester,

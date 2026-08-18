@@ -101,6 +101,25 @@ class GlowBackendService implements AuthBackend {
     return _authPost('/api/auth/refresh', {'refreshToken': refreshToken});
   }
 
+  /// Backend always answers the same way regardless of whether the email is
+  /// registered, so the response carries no signal beyond "request sent" —
+  /// callers should just show the returned message and move on. Uses
+  /// _postMessage rather than _postMap because these endpoints return
+  /// `data: null` (nothing to unwrap into a Map).
+  Future<String> forgotPassword(String email) {
+    return _postMessage('/api/auth/forgot-password', {'email': email});
+  }
+
+  Future<String> resetPassword({
+    required String token,
+    required String newPassword,
+  }) {
+    return _postMessage('/api/auth/reset-password', {
+      'token': token,
+      'newPassword': newPassword,
+    });
+  }
+
   @override
   Future<void> logout() => _storage.clear();
 
@@ -513,6 +532,24 @@ class GlowBackendService implements AuthBackend {
     try {
       final response = await request();
       return unwrapApiMap(response.data);
+    } on DioException catch (error) {
+      final apiError = error.error;
+      throw apiError is ApiException ? apiError : ApiException.fromDio(error);
+    }
+  }
+
+  /// For endpoints whose response carries `data: null` — unwrapApiMap would
+  /// throw trying to cast that into a Map, so this reads success/message
+  /// directly instead and returns the message on success.
+  Future<String> _postMessage(String path, Map<String, dynamic> payload) async {
+    try {
+      final response =
+          await _api.post<Map<String, dynamic>>(path, data: payload);
+      final body = response.data;
+      if (body is Map<String, dynamic> && body['success'] == false) {
+        throw ApiException(body['message']?.toString() ?? 'İşlem başarısız oldu.');
+      }
+      return body?['message']?.toString() ?? '';
     } on DioException catch (error) {
       final apiError = error.error;
       throw apiError is ApiException ? apiError : ApiException.fromDio(error);

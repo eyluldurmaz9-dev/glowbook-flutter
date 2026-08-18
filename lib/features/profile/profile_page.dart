@@ -148,10 +148,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ),
                         ),
                       const SizedBox(height: 16),
-                      _MyPackagesSection(customerId: session.customerId!),
-                      const SizedBox(height: 16),
-                      _MyAppointmentsSection(customerId: session.customerId!),
-                      const SizedBox(height: 16),
+                      // Edit/Save controls the personal-info block directly
+                      // above — kept right under it (not after the package/
+                      // appointment lists) so editing your own details never
+                      // requires scrolling past however many appointments
+                      // you have.
                       Row(
                         children: [
                           Expanded(
@@ -177,6 +178,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 16),
+                      _MyPackagesSection(customerId: session.customerId!),
+                      const SizedBox(height: 16),
+                      _MyAppointmentsSection(customerId: session.customerId!),
                     ],
                   ),
                 ),

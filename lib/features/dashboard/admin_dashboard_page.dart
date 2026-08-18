@@ -543,8 +543,6 @@ class _OverviewSection extends ConsumerWidget {
             );
           },
         ),
-        const SizedBox(height: AppSpacing.lg),
-        _UnsupportedPanel(),
       ],
     );
   }
@@ -1376,17 +1374,6 @@ class _AsyncListPanel extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _UnsupportedPanel extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return GlowSoftNotice(
-      title: 'Backend destek kapsamı',
-      message:
-          'Gelir grafiği, kategori CRUD, tüm randevular listesi ve bildirim yönetimi için ayrı admin endpoint’i bulunmadığı için sabit veri gösterilmiyor.',
     );
   }
 }

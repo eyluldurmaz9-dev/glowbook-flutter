@@ -4,6 +4,7 @@ import '../../features/auth/welcome_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/register_page.dart';
 import '../../features/auth/forgot_password_page.dart';
+import '../../features/auth/reset_password_page.dart';
 import '../../features/home/home_page.dart';
 import '../../features/appointment/appointment_page.dart';
 import '../../features/appointment/booking_models.dart';
@@ -43,6 +44,12 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.forgotPassword,
       builder: (context, state) => const ForgotPasswordPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.resetPassword,
+      builder: (context, state) => ResetPasswordPage(
+        token: state.queryParameters['token'],
+      ),
     ),
     GoRoute(
         path: AppRoutes.home, builder: (context, state) => const HomePage()),
