@@ -1286,13 +1286,16 @@ class GlowPackageCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (image != null) ...[
-            GlowCatalogImage(
-              semanticLabel: semanticLabel ?? title,
-              image: image,
-              icon: Icons.inventory_2_outlined,
-              width: double.infinity,
-              height: 150,
-              radius: 16,
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: GlowCatalogImage(
+                semanticLabel: semanticLabel ?? title,
+                image: image,
+                icon: Icons.inventory_2_outlined,
+                width: double.infinity,
+                height: double.infinity,
+                radius: 16,
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
           ],

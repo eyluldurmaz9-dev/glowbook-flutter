@@ -96,7 +96,12 @@ Map<String, dynamic> _appointment(
   return <String, dynamic>{
     'appointmentId': id,
     'employeeId': 'EMP-1',
-    'appointmentDate': DateTime.now().toIso8601String().substring(0, 10),
+    // A definite future date, not "today" — this test only cares about row
+    // layout, not the past-due status derivation covered elsewhere.
+    'appointmentDate': DateTime.now()
+        .add(const Duration(days: 3))
+        .toIso8601String()
+        .substring(0, 10),
     'appointmentTime': '$time:00',
     'serviceName': serviceName,
     'customerName': 'Test',

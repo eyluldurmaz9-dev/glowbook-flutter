@@ -355,8 +355,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
           selectedPackage: _customerPackage,
           customerId: customerId,
           onOptionSelected: (option) => setState(() => _option = option),
-          onPackageSelected: (package) =>
-              setState(() => _customerPackage = package),
+          onPackageSelected: _selectPackage,
           onPackageCleared: () => setState(() => _customerPackage = null),
           onPackagePurchase: (package) => _purchasePackage(customerId, package),
         );
@@ -461,6 +460,30 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     setState(() {
       _option = option;
       _packageContext = _packageContext?.withOption(optionId);
+      _employeeId = null;
+      _employeeName = null;
+      _firstAvailable = false;
+      _time = null;
+      _slot = null;
+    });
+  }
+
+  /// Keeps "Alt hizmet" restricted to whatever the selected package actually
+  /// covers — real ServicePackage/coveredOptions data (see
+  /// _OptionAndPackageStep, which filters its option list the same way), not
+  /// name matching. A previously chosen option this package doesn't cover
+  /// must never survive the selection, since the backend rejects that
+  /// mismatch at submit time anyway — this just stops the customer from
+  /// reaching that rejection in the first place.
+  void _selectPackage(CustomerPackageOption package) {
+    setState(() {
+      _customerPackage = package;
+      final covered = package.coveredOptions;
+      final currentId = _option?.id;
+      final currentIsCovered = currentId != null &&
+          covered.any((option) => option.id == currentId);
+      if (currentIsCovered) return;
+      _option = covered.length == 1 ? covered.first : null;
       _employeeId = null;
       _employeeName = null;
       _firstAvailable = false;
@@ -1027,7 +1050,21 @@ class _OptionAndPackageStep extends StatelessWidget {
           loading: () => const GlowLoading(message: 'Alt hizmetler yükleniyor'),
           error: (error, _) => GlowError(message: bookingErrorMessage(error)!),
           data: (items) {
-            final mapped = mapCatalogOptions(items);
+            final allOptions = mapCatalogOptions(items);
+            // A selected package may only be booked for the sub-service(s) it
+            // actually covers — same coveredOptions relationship the package
+            // context flow (_CoveredOptionStep) already uses, not name
+            // matching. With no package selected, every option is offered,
+            // exactly as before.
+            final coveredIds = selectedPackage?.coveredOptions
+                .map((option) => option.id)
+                .whereType<int>()
+                .toSet();
+            final mapped = coveredIds == null
+                ? allOptions
+                : allOptions
+                    .where((option) => coveredIds.contains(option.id))
+                    .toList(growable: false);
             if (mapped.isEmpty) {
               return const GlowEmptyState(title: 'Alt hizmet bulunamadı');
             }

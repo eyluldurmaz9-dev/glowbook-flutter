@@ -33,16 +33,39 @@ List<Map<String, dynamic>> employeeAppointmentsForDate(
       .toList(growable: false);
 }
 
-String employeeAppointmentStatusLabel(Object? status) {
-  switch (status?.toString().toUpperCase()) {
+/// True when a still-PENDING/APPROVED appointment's date/time has already
+/// passed. The backend deliberately keeps time-based classification (used
+/// for Yaklaşan/Geçmiş bucketing, and for package session accounting —
+/// AppointmentTimeClassifier.hasStarted) separate from the persisted status
+/// column, which only staff action (approve/complete/cancel) ever changes.
+/// Admin/employee screens still need to *show* a past, uncancelled
+/// appointment as completed, so this mirrors that same time rule purely for
+/// display — it never writes anything back, so it can't double-count or
+/// conflict with the backend's own status transitions.
+bool appointmentIsPastDue(Map<String, dynamic> appointment) {
+  final status = appointment['status']?.toString().toUpperCase();
+  if (status != 'PENDING' && status != 'APPROVED') return false;
+  final date = BookingDateUtils.parseDate(appointment['appointmentDate']);
+  final time = BookingDateUtils.normalizeTime(appointment['appointmentTime']);
+  if (date == null || time == null) return false;
+  final parts = time.split(':');
+  final hour = int.tryParse(parts.isNotEmpty ? parts[0] : '');
+  if (hour == null) return false;
+  final minute = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+  final start = DateTime(date.year, date.month, date.day, hour, minute);
+  return !start.isAfter(DateTime.now());
+}
+
+String employeeAppointmentStatusLabel(Map<String, dynamic> appointment) {
+  final status = appointment['status']?.toString().toUpperCase();
+  if (status == 'CANCELLED') return 'İptal edildi';
+  if (status == 'COMPLETED') return 'Tamamlandı';
+  if (appointmentIsPastDue(appointment)) return 'Tamamlandı';
+  switch (status) {
     case 'PENDING':
       return 'Onay bekliyor';
     case 'APPROVED':
       return 'Onaylandı';
-    case 'COMPLETED':
-      return 'Tamamlandı';
-    case 'CANCELLED':
-      return 'İptal edildi';
     default:
       return 'Durum bilinmiyor';
   }

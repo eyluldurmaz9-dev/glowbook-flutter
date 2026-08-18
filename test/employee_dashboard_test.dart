@@ -54,10 +54,16 @@ void main() {
   testWidgets('Randevu durum güncelleme backend çağrısı yapar', (tester) async {
     final backend = _FakeEmployeeBackend(
       appointments: [
-        _appointment(1, BookingDateUtils.today(), 'Hydrafacial', 'PENDING'),
+        // Tomorrow, not today — the fixed 10:00 appointment time in
+        // _appointment() must stay unambiguously in the future regardless of
+        // what time this suite happens to run at (see appointmentIsPastDue).
+        _appointment(1, BookingDateUtils.today().add(const Duration(days: 1)),
+            'Hydrafacial', 'PENDING'),
       ],
     );
     await _pumpDashboard(tester, backend: backend);
+    await _tapText(tester, 'Haftalık', last: true);
+    await tester.pumpAndSettle();
 
     await _tapButton(tester, 'Onayla');
     await tester.pumpAndSettle();

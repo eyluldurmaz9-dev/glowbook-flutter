@@ -111,12 +111,17 @@ Future<void> _openWeekly(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// A date inside the current week that the salon is open on.
+/// A date inside the current week that the salon is open on, guaranteed to
+/// be in the future so the fixed 14:00 appointment time these fixtures use
+/// is never accidentally treated as already past (see appointmentIsPastDue,
+/// which — correctly — would otherwise show these as "Tamamlandı" once the
+/// wall clock passes 14:00 on the day the suite happens to run).
 DateTime _nextWorkingDay() {
-  final today = BookingDateUtils.today();
-  return today.weekday == DateTime.sunday
-      ? today.subtract(const Duration(days: 1))
-      : today;
+  var candidate = BookingDateUtils.today().add(const Duration(days: 1));
+  if (candidate.weekday == DateTime.sunday) {
+    candidate = candidate.add(const Duration(days: 1));
+  }
+  return candidate;
 }
 
 Map<String, dynamic> _appointment(

@@ -647,13 +647,16 @@ class _ServiceAdminCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GlowCatalogImage(
-            semanticLabel:
-                '${item['serviceName']?.toString() ?? 'Hizmet'} görseli',
-            image: CatalogService.fromJson(item).image,
-            width: double.infinity,
-            height: 140,
-            radius: 16,
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: GlowCatalogImage(
+              semanticLabel:
+                  '${item['serviceName']?.toString() ?? 'Hizmet'} görseli',
+              image: CatalogService.fromJson(item).image,
+              width: double.infinity,
+              height: double.infinity,
+              radius: 16,
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
           _RowHeader(
@@ -1136,16 +1139,17 @@ class _AppointmentsSection extends ConsumerWidget {
                                   DataCell(Text(
                                       '${item['customerName'] ?? ''} ${item['customerSurname'] ?? ''}'
                                           .trim())),
-                                  DataCell(Text(employeeAppointmentStatusLabel(
-                                      item['status']))),
+                                  DataCell(Text(
+                                      employeeAppointmentStatusLabel(item))),
                                   DataCell(
                                     Wrap(
                                       spacing: AppSpacing.xs,
                                       children: [
                                         if (item['status']
-                                                ?.toString()
-                                                .toUpperCase() ==
-                                            'PENDING')
+                                                    ?.toString()
+                                                    .toUpperCase() ==
+                                                'PENDING' &&
+                                            !appointmentIsPastDue(item))
                                           TextButton(
                                             onPressed: busy
                                                 ? null
@@ -1153,9 +1157,10 @@ class _AppointmentsSection extends ConsumerWidget {
                                             child: const Text('Onayla'),
                                           ),
                                         if (item['status']
-                                                ?.toString()
-                                                .toUpperCase() ==
-                                            'APPROVED')
+                                                    ?.toString()
+                                                    .toUpperCase() ==
+                                                'APPROVED' &&
+                                            !appointmentIsPastDue(item))
                                           TextButton(
                                             onPressed: busy
                                                 ? null

@@ -154,12 +154,15 @@ class _HomeHero extends StatelessWidget {
               ],
             ),
           ),
-          const GlowCatalogImage(
-            semanticLabel: 'GlowBook hizmet görseli',
-            image: 'assets/images/glowbook-hero.jpg',
-            width: double.infinity,
-            height: 150,
-            radius: 0,
+          const AspectRatio(
+            aspectRatio: 16 / 9,
+            child: GlowCatalogImage(
+              semanticLabel: 'GlowBook hizmet görseli',
+              image: 'assets/images/glowbook-hero.jpg',
+              width: double.infinity,
+              height: double.infinity,
+              radius: 0,
+            ),
           ),
         ],
       ),

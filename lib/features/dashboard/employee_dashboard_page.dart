@@ -537,7 +537,7 @@ class _AppointmentTile extends StatelessWidget {
                         ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  GlowPill(label: employeeAppointmentStatusLabel(status)),
+                  GlowPill(label: employeeAppointmentStatusLabel(appointment)),
                 ],
               ),
             ],
@@ -547,7 +547,7 @@ class _AppointmentTile extends StatelessWidget {
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
             children: [
-              if (status == 'PENDING')
+              if (status == 'PENDING' && !appointmentIsPastDue(appointment))
                 GlowButton(
                   label: 'Onayla',
                   icon: Icons.check_circle_outline,
@@ -556,7 +556,7 @@ class _AppointmentTile extends StatelessWidget {
                       ? null
                       : () => onStatusUpdate(query, appointment, 'approve'),
                 ),
-              if (status == 'APPROVED')
+              if (status == 'APPROVED' && !appointmentIsPastDue(appointment))
                 GlowButton(
                   label: 'Tamamlandı',
                   icon: Icons.done_all_outlined,
@@ -601,7 +601,7 @@ class _AppointmentTile extends StatelessWidget {
             ),
             _DetailLine(
               'Durum',
-              employeeAppointmentStatusLabel(appointment['status']),
+              employeeAppointmentStatusLabel(appointment),
             ),
           ],
         ),
