@@ -115,6 +115,23 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     });
   }
 
+  /// Top-left exit control: steps back through the wizard exactly like the
+  /// bottom "Geri" button, but on the very first step it leaves the flow
+  /// instead of doing nothing — [AppNavigation.back] pops if this page has
+  /// something to pop to, otherwise falls back to Home, since every forward
+  /// navigation into this page goes through `context.go()` (no Navigator
+  /// history to return to). Guarded the same way the system back gesture
+  /// already is, so an in-flight submission is never abandoned mid-request.
+  void _handleTopBack() {
+    if (_submitting) return;
+    if (_step > 0) {
+      setState(() => _step--);
+      _scrollToTop();
+    } else {
+      AppNavigation.back(context, fallback: AppRoutes.home);
+    }
+  }
+
   /// Employee is chosen before tarih/saat in both flows: picking who provides
   /// the service first is what makes tarih/saat show that employee's actual
   /// availability instead of an arbitrary combined list. Package booking
@@ -196,6 +213,17 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Row(
+                      children: [
+                        GlowIconButton(
+                          key: const Key('booking_top_back'),
+                          icon: Icons.chevron_left,
+                          tooltip: 'Geri',
+                          onPressed: _handleTopBack,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     GlowPageTop(
                       title: _packageMode
                           ? 'Paketinle randevu al'

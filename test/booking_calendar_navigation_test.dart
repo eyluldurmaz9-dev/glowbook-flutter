@@ -19,18 +19,27 @@ void main() {
   // Flutter's CalendarDatePicker clears the tooltip (sets it to null) on the
   // button for a disabled boundary month, so matching by icon shape — not
   // tooltip text — is what reliably finds the button in both its enabled and
-  // its intentionally-disabled state.
-  Finder nextMonthButton() => find.byWidgetPredicate(
-        (widget) =>
-            widget is IconButton &&
-            widget.icon is Icon &&
-            (widget.icon as Icon).icon == Icons.chevron_right,
+  // its intentionally-disabled state. Scoped to descendants of the
+  // CalendarDatePicker itself: the wizard's own top-left exit control also
+  // uses a chevron_left icon (matching the app's established back-button
+  // style elsewhere), so an unscoped predicate would match both.
+  Finder nextMonthButton() => find.descendant(
+        of: find.byType(CalendarDatePicker),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is IconButton &&
+              widget.icon is Icon &&
+              (widget.icon as Icon).icon == Icons.chevron_right,
+        ),
       );
-  Finder previousMonthButton() => find.byWidgetPredicate(
-        (widget) =>
-            widget is IconButton &&
-            widget.icon is Icon &&
-            (widget.icon as Icon).icon == Icons.chevron_left,
+  Finder previousMonthButton() => find.descendant(
+        of: find.byType(CalendarDatePicker),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is IconButton &&
+              widget.icon is Icon &&
+              (widget.icon as Icon).icon == Icons.chevron_left,
+        ),
       );
   Finder dayCell(String day) => find.descendant(
         of: find.byType(CalendarDatePicker),

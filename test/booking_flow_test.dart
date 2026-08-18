@@ -57,6 +57,39 @@ void main() {
   });
 
   testWidgets(
+      'Sol üstteki geri butonu ilk adımda Ana Sayfaya döner',
+      (tester) async {
+    final router = await _pumpBooking(tester, backend: _FakeGlowBackendService());
+
+    await tester.tap(find.byKey(const Key('booking_top_back')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('HOME_ROUTE_MARKER'), findsOneWidget);
+    expect(router.routerDelegate.currentConfiguration.uri.toString(),
+        AppRoutes.home);
+  });
+
+  testWidgets(
+      'Sol üstteki geri butonu ileri adımda önceki adıma döner',
+      (tester) async {
+    await _pumpBooking(tester, backend: _FakeGlowBackendService());
+
+    await _tapText(tester, 'Hydrafacial');
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Devam', last: true);
+    await tester.pumpAndSettle();
+    expect(find.text('Cilt Bakımı'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('booking_top_back')));
+    await tester.pumpAndSettle();
+
+    // Back on the service step, not Home: the wizard state (previously
+    // selected Hydrafacial) survives the step-back.
+    expect(find.text('HOME_ROUTE_MARKER'), findsNothing);
+    expect(find.text('Hydrafacial'), findsOneWidget);
+  });
+
+  testWidgets(
       'Tam başarılı randevu akışı sonrası Randevu oluştur ekranından çıkılır',
       (tester) async {
     final backend = _FakeGlowBackendService();
