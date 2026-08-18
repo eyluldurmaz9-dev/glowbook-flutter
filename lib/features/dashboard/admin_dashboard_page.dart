@@ -1959,10 +1959,16 @@ class _AdminFormDialog extends StatelessWidget {
 }
 
 DateRangeQuery _adminHolidayQuery() {
+  // The backend requires an explicit bounded range (no "all" mode) - this
+  // window is wide enough to include every holiday an admin would realistically
+  // enter, past or future, instead of silently dropping anything outside a
+  // near-term window.
   final today = BookingDateUtils.today();
   return DateRangeQuery(
-    startDate: BookingDateUtils.formatDate(today),
-    endDate: BookingDateUtils.formatDate(today.add(const Duration(days: 180))),
+    startDate: BookingDateUtils.formatDate(
+        today.subtract(const Duration(days: 3650))),
+    endDate:
+        BookingDateUtils.formatDate(today.add(const Duration(days: 3650))),
   );
 }
 

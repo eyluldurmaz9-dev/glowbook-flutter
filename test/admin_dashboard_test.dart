@@ -198,6 +198,78 @@ void main() {
     );
     addTearDown(() => _resetViewport(tester));
   });
+
+  testWidgets(
+      'Tatil Günleri bölümü uzak geçmiş/gelecek tatiller dahil tüm kayıtları gösterir',
+      (tester) async {
+    _setWideViewport(tester);
+    // Mirrors the real backend's findByHolidayDateBetween: only holidays
+    // whose date falls inside the requested [startDate, endDate] window are
+    // returned, so this only shows all 6 if the app actually requests a wide
+    // enough range instead of a narrow near-term one.
+    final allHolidays = [
+      {'holidayId': 1, 'holidayDate': '2024-01-01', 'holidayName': 'Eski Tatil 1'},
+      {'holidayId': 2, 'holidayDate': '2025-03-01', 'holidayName': 'Eski Tatil 2'},
+      {'holidayId': 3, 'holidayDate': '2026-08-25', 'holidayName': 'Yakin Tatil 1'},
+      {'holidayId': 4, 'holidayDate': '2026-09-15', 'holidayName': 'Yakin Tatil 2'},
+      {'holidayId': 5, 'holidayDate': '2027-06-01', 'holidayName': 'Uzak Tatil 1'},
+      {'holidayId': 6, 'holidayDate': '2028-12-25', 'holidayName': 'Uzak Tatil 2'},
+    ];
+    final backend = _FakeAdminBackend();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          glowBackendServiceProvider.overrideWithValue(backend),
+          authControllerProvider.overrideWith(
+            (ref) => _ReadyAuthController(
+              backend,
+              const AuthSession(
+                token: 'token',
+                role: 'ADMIN',
+                employeeId: 'ADMIN-1',
+                fullName: 'Admin',
+              ),
+            ),
+          ),
+          servicesProvider.overrideWith((ref) async => backend.services),
+          serviceOptionsProvider
+              .overrideWith((ref, serviceId) async => backend.options),
+          allServicePackagesProvider
+              .overrideWith((ref) async => backend.packages),
+          employeesProvider.overrideWith((ref) async => backend.employees),
+          customersProvider.overrideWith((ref) async => backend.customers),
+          workingHoursProvider
+              .overrideWith((ref) async => backend.workingHours),
+          holidaysProvider.overrideWith((ref, query) async {
+            final start = DateTime.parse(query.startDate);
+            final end = DateTime.parse(query.endDate);
+            return allHolidays.where((item) {
+              final date = DateTime.parse(item['holidayDate'] as String);
+              return !date.isBefore(start) && !date.isAfter(end);
+            }).toList();
+          }),
+        ],
+        child: MaterialApp(
+            theme: AppTheme.lightTheme, home: const AdminDashboardPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('admin_nav_schedule')));
+    await tester.pumpAndSettle();
+
+    for (final name in [
+      'Eski Tatil 1',
+      'Eski Tatil 2',
+      'Yakin Tatil 1',
+      'Yakin Tatil 2',
+      'Uzak Tatil 1',
+      'Uzak Tatil 2',
+    ]) {
+      expect(find.text(name), findsOneWidget, reason: '$name görünmüyor');
+    }
+    addTearDown(() => _resetViewport(tester));
+  });
 }
 
 Future<void> _pumpAdmin(
