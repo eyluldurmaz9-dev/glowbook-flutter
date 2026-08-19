@@ -496,7 +496,6 @@ class _OverviewSection extends ConsumerWidget {
       children: [
         _AdminHeader(
           title: 'Genel Bakış',
-          subtitle: 'Gerçek API verilerine bağlı yönetim özeti.',
           actions: [
             GlowButton(
               key: const Key('admin_service_create'),
@@ -1251,12 +1250,12 @@ class _CustomersSection extends ConsumerWidget {
 class _AdminHeader extends StatelessWidget {
   const _AdminHeader({
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     this.actions = const [],
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final List<Widget> actions;
 
   @override
@@ -1270,7 +1269,8 @@ class _AdminHeader extends StatelessWidget {
             const GlowEyebrow('GlowBook Admin'),
             const SizedBox(height: AppSpacing.xs),
             Text(title, style: Theme.of(context).textTheme.headlineMedium),
-            Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+            if (subtitle != null)
+              Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
           ],
         );
         return wide
