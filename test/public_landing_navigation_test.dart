@@ -8,6 +8,7 @@ import 'package:glowbook_flutter/core/services/api_service.dart';
 import 'package:glowbook_flutter/core/services/glow_backend_service.dart';
 import 'package:glowbook_flutter/core/storage/secure_storage_service.dart';
 import 'package:glowbook_flutter/core/theme/app_theme.dart';
+import 'package:glowbook_flutter/core/widgets/glow_widgets.dart';
 import 'package:glowbook_flutter/features/appointment/appointment_page.dart';
 import 'package:glowbook_flutter/features/auth/login_page.dart';
 import 'package:glowbook_flutter/features/package/packages_page.dart';
@@ -181,27 +182,104 @@ void main() {
     });
   });
 
-  testWidgets('Misafir erişimi ekranı → Ana Sayfaya Dön → Public Landing',
-      (tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp.router(
-          theme: AppTheme.lightTheme,
-          routerConfig: _routerStartingAt(
-            '${AppRoutes.login}?mode=guest',
-            loginRoute: true,
+  group('Misafir erişimi ekranı', () {
+    // "Ana Sayfaya Dön" was intentionally removed from this screen — only
+    // this screen. Every other "Ana Sayfaya Dön"/"Ana Sayfa" control in the
+    // app (Services, Packages, the booking wizard, the web login screen)
+    // is untouched and covered by its own test above/elsewhere in this
+    // file.
+    testWidgets('"Ana Sayfaya Dön" artık gösterilmiyor', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: _routerStartingAt(
+              '${AppRoutes.login}?mode=guest',
+              loginRoute: true,
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(
-        find.byKey(const Key('guest_access_public_home')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('guest_access_public_home')));
-    await tester.pumpAndSettle();
+      expect(find.byKey(const Key('guest_access_public_home')), findsNothing);
+      expect(find.text('Ana Sayfaya Dön'), findsNothing);
+    });
 
-    expect(publicLandingMarker(), findsOneWidget);
+    testWidgets('"Hizmetleri Keşfet" ve "Girişe Dön" korunur',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            servicesProvider.overrideWith((ref) async => const []),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: _routerStartingAt(
+              '${AppRoutes.login}?mode=guest',
+              loginRoute: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(GlowButton, 'Hizmetleri Keşfet'),
+          findsOneWidget);
+      expect(
+          find.widgetWithText(GlowButton, 'Girişe Dön'), findsOneWidget);
+    });
+
+    testWidgets('"Hizmetleri Keşfet" Services ekranına gider', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            servicesProvider.overrideWith((ref) async => const []),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: _routerStartingAt(
+              '${AppRoutes.login}?mode=guest',
+              loginRoute: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Hizmetleri Keşfet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hizmetleri keşfet'), findsOneWidget);
+    });
+
+    testWidgets('"Girişe Dön" normal login ekranına gider', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            // LoginPage (non-guest) reads authControllerProvider directly;
+            // without this override it falls through to the real backend's
+            // loadSession(), which hits secure storage and never settles
+            // under the test binding.
+            authControllerProvider
+                .overrideWith((ref) => _NoSessionAuthController()),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: _routerStartingAt(
+              '${AppRoutes.login}?mode=guest',
+              loginRoute: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Girişe Dön'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(GlowButton, 'Giriş Yap'), findsOneWidget);
+    });
   });
 
   group('Randevu sihirbazı', () {
@@ -320,5 +398,11 @@ class _ReadyAuthController extends AuthController {
     state = const AsyncValue.data(
       AuthSession(token: 'token', role: 'CUSTOMER', customerId: 12),
     );
+  }
+}
+
+class _NoSessionAuthController extends AuthController {
+  _NoSessionAuthController() : super(_FakeBackend()) {
+    state = const AsyncValue.data(null);
   }
 }
