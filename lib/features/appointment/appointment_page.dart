@@ -19,6 +19,22 @@ int? _asInt(Object? value) {
   return int.tryParse(value?.toString() ?? '');
 }
 
+const _weekdayNames = [
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+  'SUNDAY',
+];
+
+/// DateTime.weekday is already 1=Monday..7=Sunday, matching Java's
+/// DayOfWeek enum names one to one — this only maps the index to the exact
+/// same uppercase string the admin's day dropdown and the backend already
+/// use, so there's no separate numbering scheme to get out of sync.
+String _weekdayName(DateTime date) => _weekdayNames[date.weekday - 1];
+
 /// Explicit submission outcomes for the final confirmation. Exactly one of
 /// [success] or [failure] is ever reached per submission — never both — which
 /// is what keeps a stale success state from coexisting with a later conflict.
@@ -185,6 +201,43 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     final session = auth.asData?.value;
     final customerId = session?.customerId;
     final services = ref.watch(servicesProvider);
+    final closedWeekdays = (ref.watch(workingHoursProvider).asData?.value ?? const [])
+        .where((item) => item['closed'] == true)
+        .map((item) => item['dayOfWeek']?.toString())
+        .whereType<String>()
+        .toSet();
+    final bookingWindowStart = BookingDateUtils.today();
+    final bookingWindowEnd = bookingWindowStart.add(const Duration(days: 90));
+    final holidayDates = (ref
+                .watch(holidaysProvider(DateRangeQuery(
+                  startDate: BookingDateUtils.formatDate(bookingWindowStart),
+                  endDate: BookingDateUtils.formatDate(bookingWindowEnd),
+                )))
+                .asData
+                ?.value ??
+            const [])
+        .map((item) => BookingDateUtils.parseDate(item['holidayDate']))
+        .whereType<DateTime>()
+        .map(BookingDateUtils.formatDate)
+        .toSet();
+    // A closed weekday or an explicit holiday must never be bookable, no
+    // matter what else is already selected — the Tarih step lets the
+    // customer pick several dates at once ("Birden fazla tarih
+    // seçebilirsin"), and _candidateDates always starts pre-populated with
+    // tomorrow, so without this filter a closed/holiday date silently piggy-
+    // backs on whatever other date is already selected: its own slots are
+    // correctly empty, but the *other* date's real slots still show up in
+    // the merged Uygun Zaman list, making the closed date look bookable.
+    bool isDateBookable(DateTime date) {
+      final normalized = BookingDateUtils.normalize(date);
+      if (BookingDateUtils.isPast(normalized)) return false;
+      if (closedWeekdays.contains(_weekdayName(normalized))) return false;
+      if (holidayDates.contains(BookingDateUtils.formatDate(normalized))) {
+        return false;
+      }
+      return true;
+    }
+
     final slotDates = _candidateDates
         .map(BookingDateUtils.formatDate)
         .toSet()
@@ -275,6 +328,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
                         slots: slots,
                         customerId: customerId,
                         signedIn: customerId != null,
+                        isDateBookable: isDateBookable,
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -353,6 +407,7 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
     required AsyncValue<List<Map<String, dynamic>>>? slots,
     required int? customerId,
     required bool signedIn,
+    required bool Function(DateTime) isDateBookable,
   }) {
     switch (_currentStep) {
       case BookingStepKind.service:
@@ -410,9 +465,16 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage> {
       case BookingStepKind.date:
         return _DateStep(
           selectedDates: _candidateDates,
+          isDateBookable: isDateBookable,
           onSelected: (date) {
-            if (BookingDateUtils.isPast(date)) return;
             final normalized = BookingDateUtils.normalize(date);
+            // A date already in the selection must stay removable (the
+            // "x" chip, or tapping it again) even if it isn't bookable —
+            // only adding a new closed/holiday date is blocked.
+            final alreadySelected = _candidateDates.any((item) =>
+                BookingDateUtils.formatDate(item) ==
+                BookingDateUtils.formatDate(normalized));
+            if (!alreadySelected && !isDateBookable(normalized)) return;
             setState(() {
               _candidateDates = _toggleDate(_candidateDates, normalized);
               _date = _candidateDates.first;
@@ -1409,22 +1471,50 @@ class _EmployeeChoice {
   final String name;
 }
 
+/// Scans forward from [start] for the first date [isDateBookable] accepts,
+/// never past [limit]. Falls back to [start] itself if nothing in range
+/// qualifies (all 90 days closed), which is an extreme edge case but keeps
+/// this a plain fallback rather than a null/throw path.
+DateTime _nearestBookableDate(
+  DateTime start,
+  DateTime limit,
+  bool Function(DateTime) isDateBookable,
+) {
+  var candidate = start;
+  while (!isDateBookable(candidate)) {
+    if (!candidate.isBefore(limit)) return start;
+    candidate = candidate.add(const Duration(days: 1));
+  }
+  return candidate;
+}
+
 class _DateStep extends StatelessWidget {
-  const _DateStep({required this.selectedDates, required this.onSelected});
+  const _DateStep({
+    required this.selectedDates,
+    required this.onSelected,
+    required this.isDateBookable,
+  });
 
   final List<DateTime> selectedDates;
   final ValueChanged<DateTime> onSelected;
+  final bool Function(DateTime) isDateBookable;
 
   @override
   Widget build(BuildContext context) {
     final today = BookingDateUtils.today();
     final lastDate = today.add(const Duration(days: 90));
     final initialDate = selectedDates.isEmpty ? today : selectedDates.first;
-    final calendarDate = initialDate.isBefore(today)
+    final clampedDate = initialDate.isBefore(today)
         ? today
         : initialDate.isAfter(lastDate)
             ? lastDate
             : initialDate;
+    // CalendarDatePicker/showDatePicker assert that initialDate satisfies
+    // selectableDayPredicate — the wizard's default candidate date
+    // (tomorrow) can itself land on a closed weekday or a holiday, so fall
+    // forward to the nearest bookable day rather than risk that assertion.
+    final calendarDate =
+        _nearestBookableDate(clampedDate, lastDate, isDateBookable);
     final dates =
         List.generate(14, (index) => today.add(Duration(days: index)));
     final selectedLabels =
@@ -1446,6 +1536,7 @@ class _DateStep extends StatelessWidget {
             firstDate: today,
             lastDate: lastDate,
             currentDate: calendarDate,
+            selectableDayPredicate: isDateBookable,
             onDateChanged: onSelected,
           ),
         ),
@@ -1477,6 +1568,7 @@ class _DateStep extends StatelessWidget {
               firstDate: today,
               lastDate: lastDate,
               initialDate: calendarDate,
+              selectableDayPredicate: isDateBookable,
               locale: const Locale('tr'),
             );
             if (picked != null) onSelected(picked);
