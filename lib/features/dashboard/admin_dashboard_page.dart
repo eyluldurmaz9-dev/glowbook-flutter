@@ -968,7 +968,10 @@ class _ScheduleSection extends ConsumerWidget {
                 itemBuilder: (item) => ListTile(
                   title: Text(item['dayOfWeek']?.toString() ?? '-'),
                   subtitle: Text(
-                      '${item['startTime'] ?? '-'} - ${item['endTime'] ?? '-'}'),
+                    item['closed'] == true
+                        ? 'KAPALI'
+                        : '${item['startTime'] ?? '-'} - ${item['endTime'] ?? '-'}',
+                  ),
                   trailing: TextButton(
                     onPressed: busy ? null : () => onEditWorkingHour(item),
                     child: const Text('Düzenle'),

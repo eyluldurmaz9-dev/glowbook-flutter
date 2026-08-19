@@ -321,6 +321,81 @@ void main() {
     }
     addTearDown(() => _resetViewport(tester));
   });
+
+  testWidgets(
+      'Kapalı gün listede KAPALI olarak gösterilir, açık günler saatiyle kalır',
+      (tester) async {
+    _setWideViewport(tester);
+    final backend = _FakeAdminBackend();
+    final workingHours = const [
+      {
+        'workingHourId': 1,
+        'dayOfWeek': 'MONDAY',
+        'startTime': '10:00:00',
+        'endTime': '19:00:00',
+        'closed': false,
+      },
+      {
+        'workingHourId': 2,
+        'dayOfWeek': 'TUESDAY',
+        'startTime': '10:00:00',
+        'endTime': '19:00:00',
+        'closed': true,
+      },
+    ];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          glowBackendServiceProvider.overrideWithValue(backend),
+          authControllerProvider.overrideWith(
+            (ref) => _ReadyAuthController(
+              backend,
+              const AuthSession(
+                token: 'token',
+                role: 'ADMIN',
+                employeeId: 'ADMIN-1',
+                fullName: 'Admin',
+              ),
+            ),
+          ),
+          servicesProvider.overrideWith((ref) async => backend.services),
+          serviceOptionsProvider
+              .overrideWith((ref, serviceId) async => backend.options),
+          allServicePackagesProvider
+              .overrideWith((ref) async => backend.packages),
+          employeesProvider.overrideWith((ref) async => backend.employees),
+          customersProvider.overrideWith((ref) async => backend.customers),
+          workingHoursProvider.overrideWith((ref) async => workingHours),
+          holidaysProvider.overrideWith((ref, query) async => const []),
+        ],
+        child: MaterialApp(
+            theme: AppTheme.lightTheme, home: const AdminDashboardPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('admin_nav_schedule')));
+    await tester.pumpAndSettle();
+
+    // Regression guard for the reported bug: a closed day must never show
+    // a time range that makes it look open again.
+    expect(find.text('KAPALI'), findsOneWidget);
+    expect(find.text('10:00:00 - 19:00:00'), findsOneWidget,
+        reason: 'MONDAY açık, kendi saatiyle görünmeli');
+
+    final editButtons = find.widgetWithText(TextButton, 'Düzenle');
+    await tester.ensureVisible(editButtons.last);
+    await tester.tap(editButtons.last);
+    await tester.pumpAndSettle();
+
+    final closedSwitch = tester.widget<SwitchListTile>(
+      find.widgetWithText(SwitchListTile, 'Kapalı'),
+    );
+    expect(closedSwitch.value, isTrue,
+        reason:
+            'TUESDAY kapalı olarak kaydedildiyse Düzenle formu Kapalı=ON ile açılmalı');
+    addTearDown(() => _resetViewport(tester));
+  });
 }
 
 Future<void> _pumpAdmin(
