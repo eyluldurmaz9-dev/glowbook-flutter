@@ -157,6 +157,131 @@ void main() {
     expect(isSelectable(tomorrow), isTrue,
         reason: 'Varsayılan (açık) tarih seçilebilir kalmalı');
   });
+
+  testWidgets(
+      'Admin kapalı/açık değişikliği uygulamayı yeniden başlatmadan takvime yansır',
+      (tester) async {
+    // Simulates the real deployment shape: the admin's change lives in the
+    // backend, and the customer's app picks it up on its next fetch — no
+    // rebuild/restart. workingHoursProvider is a plain autoDispose
+    // FutureProvider (no family key), so re-fetching it after the
+    // "admin save" is just container.invalidate + a settle, exactly what
+    // happens for real when the customer (re)opens the booking screen.
+    var closedWeekday = <String>{};
+    final backend = _FakeGlowBackendService();
+    final container = ProviderContainer(overrides: [
+      glowBackendServiceProvider.overrideWithValue(backend),
+      authControllerProvider.overrideWith((ref) => _ReadyAuthController(backend)),
+      servicesProvider.overrideWith((ref) async => const [
+            {
+              'serviceId': 1,
+              'serviceName': 'Hydrafacial',
+              'description': 'Bakım',
+            },
+          ]),
+      serviceOptionsProvider.overrideWith((ref, serviceId) async => const [
+            {
+              'optionId': 11,
+              'serviceId': 1,
+              'optionName': 'Cilt Bakımı',
+              'price': '900',
+            },
+          ]),
+      servicePackagesProvider.overrideWith((ref, serviceId) async => const []),
+      employeesByServiceOptionProvider.overrideWith((ref, query) async => const [
+            {'employeeId': 'EMP-1', 'employeeName': 'Elif Yılmaz'},
+          ]),
+      customerPackagesProvider.overrideWith((ref, customerId) async => const []),
+      customerUpcomingAppointmentsProvider
+          .overrideWith((ref, customerId) async => const []),
+      customerPastAppointmentsProvider
+          .overrideWith((ref, customerId) async => const []),
+      profileProvider.overrideWith((ref) async => const {
+            'customerId': 12,
+            'firstName': 'Derya',
+            'lastName': 'Yılmaz',
+            'phone': '05551110000',
+            'email': 'derya@glowbook.test',
+          }),
+      availableSlotsProvider.overrideWith((ref, query) async => const []),
+      workingHoursProvider.overrideWith((ref) async => [
+            for (final day in closedWeekday)
+              {
+                'workingHourId': 1,
+                'dayOfWeek': day,
+                'startTime': '10:00:00',
+                'endTime': '19:00:00',
+                'closed': true,
+              },
+          ]),
+      holidaysProvider.overrideWith((ref, query) async => const []),
+    ]);
+    addTearDown(container.dispose);
+
+    final router = GoRouter(
+      initialLocation: AppRoutes.appointment,
+      routes: [
+        GoRoute(
+          path: AppRoutes.appointment,
+          builder: (context, state) => const AppointmentPage(),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme,
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _tapText(tester, 'Hydrafacial');
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Devam', last: true);
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Cilt Bakımı');
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Devam', last: true);
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Elif Yılmaz');
+    await tester.pumpAndSettle();
+    await _tapText(tester, 'Devam', last: true);
+    await tester.pumpAndSettle();
+
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final today = DateTime(tomorrow.year, tomorrow.month, tomorrow.day)
+        .subtract(const Duration(days: 1));
+    var target = today.add(const Duration(days: 5));
+    final targetWeekday = weekdayNames[target.weekday - 1];
+
+    CalendarDatePicker readCalendar() =>
+        tester.widget<CalendarDatePicker>(find.byType(CalendarDatePicker));
+
+    expect(readCalendar().selectableDayPredicate!(target), isTrue,
+        reason: 'Başlangıçta açık');
+
+    // Admin closes targetWeekday and saves.
+    closedWeekday = {targetWeekday};
+    container.invalidate(workingHoursProvider);
+    await tester.pumpAndSettle();
+
+    expect(readCalendar().selectableDayPredicate!(target), isFalse,
+        reason:
+            'Admin $targetWeekday\'i kapattı; restart olmadan takvime yansımalı');
+
+    // Admin reopens it.
+    closedWeekday = {};
+    container.invalidate(workingHoursProvider);
+    await tester.pumpAndSettle();
+
+    expect(readCalendar().selectableDayPredicate!(target), isTrue,
+        reason:
+            'Admin $targetWeekday\'i tekrar açtı; restart olmadan takvime yansımalı');
+  });
 }
 
 Future<void> _tapText(WidgetTester tester, String text, {bool last = false}) async {
