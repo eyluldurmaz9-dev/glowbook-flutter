@@ -396,6 +396,93 @@ void main() {
             'TUESDAY kapalı olarak kaydedildiyse Düzenle formu Kapalı=ON ile açılmalı');
     addTearDown(() => _resetViewport(tester));
   });
+
+  testWidgets(
+      'Randevu Yönetimi: Tamamlandı ve İptal Edildi randevularda İptal aksiyonu yok',
+      (tester) async {
+    _setWideViewport(tester);
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final date = '${tomorrow.year.toString().padLeft(4, '0')}-'
+        '${tomorrow.month.toString().padLeft(2, '0')}-'
+        '${tomorrow.day.toString().padLeft(2, '0')}';
+    final appointments = [
+      {
+        'appointmentId': 1,
+        'appointmentDate': date,
+        'appointmentTime': '10:00:00',
+        'serviceName': 'Hydrafacial',
+        'customerName': 'Beklemede',
+        'customerSurname': 'Musteri',
+        'status': 'PENDING',
+      },
+      {
+        'appointmentId': 2,
+        'appointmentDate': date,
+        'appointmentTime': '11:00:00',
+        'serviceName': 'Hydrafacial',
+        'customerName': 'Onayli',
+        'customerSurname': 'Musteri',
+        'status': 'APPROVED',
+      },
+      {
+        'appointmentId': 3,
+        'appointmentDate': date,
+        'appointmentTime': '12:00:00',
+        'serviceName': 'Hydrafacial',
+        'customerName': 'Tamamlanan',
+        'customerSurname': 'Musteri',
+        'status': 'COMPLETED',
+      },
+      {
+        'appointmentId': 4,
+        'appointmentDate': date,
+        'appointmentTime': '13:00:00',
+        'serviceName': 'Hydrafacial',
+        'customerName': 'Iptal',
+        'customerSurname': 'Musteri',
+        'status': 'CANCELLED',
+      },
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          glowBackendServiceProvider.overrideWithValue(_FakeAdminBackend()),
+          authControllerProvider.overrideWith(
+            (ref) => _ReadyAuthController(
+              _FakeAdminBackend(),
+              const AuthSession(
+                token: 'token',
+                role: 'ADMIN',
+                employeeId: 'ADMIN-1',
+                fullName: 'Admin',
+              ),
+            ),
+          ),
+          employeesProvider.overrideWith((ref) async => const [
+                {'employeeId': 'EMP-1', 'firstName': 'Elif', 'lastName': 'Yılmaz'},
+              ]),
+          // A blanket family override: every EmployeeAppointmentsQuery (any
+          // week range) resolves to the same fixture, so the test doesn't
+          // need to reproduce the widget's own week-range computation.
+          employeeAppointmentsProvider.overrideWith((ref, query) async => appointments),
+        ],
+        child: MaterialApp(
+            theme: AppTheme.lightTheme, home: const AdminDashboardPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('admin_nav_appointments')));
+    await tester.pumpAndSettle();
+
+    // Onayla only for the PENDING row, Tamamla only for the APPROVED row —
+    // and İptal for exactly those two, never for COMPLETED or CANCELLED.
+    expect(find.widgetWithText(TextButton, 'Onayla'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Tamamla'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'İptal'), findsNWidgets(2));
+    addTearDown(() => _resetViewport(tester));
+  });
 }
 
 Future<void> _pumpAdmin(

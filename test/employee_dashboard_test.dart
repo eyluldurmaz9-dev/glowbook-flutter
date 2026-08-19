@@ -6,6 +6,7 @@ import 'package:glowbook_flutter/core/services/api_service.dart';
 import 'package:glowbook_flutter/core/services/glow_backend_service.dart';
 import 'package:glowbook_flutter/core/storage/secure_storage_service.dart';
 import 'package:glowbook_flutter/core/theme/app_theme.dart';
+import 'package:glowbook_flutter/core/widgets/glow_widgets.dart';
 import 'package:glowbook_flutter/features/appointment/booking_models.dart';
 import 'package:glowbook_flutter/features/dashboard/employee_dashboard_page.dart';
 import 'package:glowbook_flutter/features/employee/employee_dashboard_models.dart';
@@ -64,6 +65,132 @@ void main() {
     expect(find.text('Kalıcı Oje'), findsOneWidget);
   });
 
+  testWidgets(
+      'Çalışma Saatleri: 7 gün görünür, kapalı gün Kapalı, açık gün gerçek saatiyle Aktif',
+      (tester) async {
+    const workingHours = [
+      {
+        'workingHourId': 1,
+        'dayOfWeek': 'MONDAY',
+        'startTime': '10:00:00',
+        'endTime': '19:00:00',
+        'closed': false,
+      },
+      {
+        'workingHourId': 2,
+        'dayOfWeek': 'TUESDAY',
+        'startTime': '10:00:00',
+        'endTime': '19:00:00',
+        'closed': true,
+      },
+      {
+        'workingHourId': 3,
+        'dayOfWeek': 'WEDNESDAY',
+        'startTime': '11:00:00',
+        'endTime': '18:00:00',
+        'closed': false,
+      },
+      {
+        'workingHourId': 4,
+        'dayOfWeek': 'THURSDAY',
+        'startTime': '10:00:00',
+        'endTime': '19:00:00',
+        'closed': false,
+      },
+      {
+        'workingHourId': 5,
+        'dayOfWeek': 'FRIDAY',
+        'startTime': '09:30:00',
+        'endTime': '17:30:00',
+        'closed': false,
+      },
+      {
+        'workingHourId': 6,
+        'dayOfWeek': 'SATURDAY',
+        'startTime': '10:00:00',
+        'endTime': '18:00:00',
+        'closed': false,
+      },
+      {
+        'workingHourId': 7,
+        'dayOfWeek': 'SUNDAY',
+        'startTime': '12:00:00',
+        'endTime': '17:00:00',
+        'closed': false,
+      },
+    ];
+    await _pumpDashboard(
+      tester,
+      backend: _FakeEmployeeBackend(),
+      workingHours: workingHours,
+    );
+
+    await _tapText(tester, 'Çalışma Saatleri', last: true);
+    await tester.pumpAndSettle();
+
+    // TEST 5/12: all 7 days present and reachable by scrolling the panel's
+    // own list — the ListView only builds what's near the viewport, so
+    // each day is checked as it's scrolled into view rather than assumed
+    // to already be built, matching how a user actually reaches Sunday.
+    final panelList = find.byType(ListView).last;
+    Finder cardFor(String day) {
+      final finder = find.text(day);
+      return find.ancestor(of: finder, matching: find.byType(GlowCard));
+    }
+
+    Future<void> scrollTo(String day) => tester.dragUntilVisible(
+          find.text(day),
+          panelList,
+          const Offset(0, -80),
+        );
+
+    for (final day in workingHours) {
+      await scrollTo(day['dayOfWeek'] as String);
+      expect(find.text(day['dayOfWeek'] as String), findsOneWidget,
+          reason: '${day['dayOfWeek']} listede görünmüyor');
+    }
+
+    // TEST 6: TUESDAY is closed — must read "Kapalı", never its stored hours
+    // rendered as if the day were open.
+    await scrollTo('TUESDAY');
+    final tuesdayCard = cardFor('TUESDAY');
+    expect(find.descendant(of: tuesdayCard, matching: find.text('Kapalı')),
+        findsNWidgets(2)); // subtitle + trailing both say "Kapalı"
+    expect(
+        find.descendant(
+            of: tuesdayCard, matching: find.textContaining('10:00')),
+        findsNothing,
+        reason: 'Kapalı günün eski saatleri açıkmış gibi gösterilmemeli');
+
+    // TEST 7/9: WEDNESDAY and FRIDAY each show their own real, different
+    // hours — not a shared hardcoded value.
+    await scrollTo('WEDNESDAY');
+    final wednesdayCard = cardFor('WEDNESDAY');
+    expect(
+        find.descendant(
+            of: wednesdayCard, matching: find.text('11:00:00 - 18:00:00')),
+        findsOneWidget);
+    expect(
+        find.descendant(of: wednesdayCard, matching: find.text('Aktif')),
+        findsOneWidget);
+
+    await scrollTo('FRIDAY');
+    final fridayCard = cardFor('FRIDAY');
+    expect(
+        find.descendant(
+            of: fridayCard, matching: find.text('09:30:00 - 17:30:00')),
+        findsOneWidget);
+
+    // TEST 8: SUNDAY reachable (via the panel's own scroll) with its own
+    // distinct hours, not missing/clipped and not defaulted to Monday's.
+    await scrollTo('SUNDAY');
+    final sundayCard = cardFor('SUNDAY');
+    expect(
+        find.descendant(
+            of: sundayCard, matching: find.text('12:00:00 - 17:00:00')),
+        findsOneWidget);
+  });
+
   testWidgets('Randevu durum güncelleme backend çağrısı yapar', (tester) async {
     final backend = _FakeEmployeeBackend(
       appointments: [
@@ -117,6 +244,7 @@ Future<void> _pumpDashboard(
     employeeId: 'EMP-1',
     fullName: 'Elif Yılmaz',
   ),
+  List<Map<String, dynamic>>? workingHours,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -125,15 +253,22 @@ Future<void> _pumpDashboard(
         authControllerProvider.overrideWith(
           (ref) => _ReadyAuthController(backend, session),
         ),
+        // The real WorkingHourResponse field is `closed`, not `active` —
+        // this fixture must match the real backend contract, or a bug in
+        // the panel that only ever exercised a wrong-but-matching field
+        // name (like the one this file's own dynamic-hours test guards
+        // against) would silently pass.
         workingHoursProvider.overrideWith(
-          (ref) async => const [
-            {
-              'dayOfWeek': 'MONDAY',
-              'startTime': '09:00:00',
-              'endTime': '18:00:00',
-              'active': true,
-            },
-          ],
+          (ref) async =>
+              workingHours ??
+              const [
+                {
+                  'dayOfWeek': 'MONDAY',
+                  'startTime': '09:00:00',
+                  'endTime': '18:00:00',
+                  'closed': false,
+                },
+              ],
         ),
       ],
       child: MaterialApp(

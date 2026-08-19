@@ -1163,12 +1163,23 @@ class _AppointmentsSection extends ConsumerWidget {
                                                 : () => onComplete(query, item),
                                             child: const Text('Tamamla'),
                                           ),
-                                        TextButton(
-                                          onPressed: busy
-                                              ? null
-                                              : () => onCancel(query, item),
-                                          child: const Text('İptal'),
-                                        ),
+                                        // A completed or already-cancelled
+                                        // appointment is a finished record —
+                                        // it can never be cancelled again.
+                                        if (item['status']
+                                                    ?.toString()
+                                                    .toUpperCase() !=
+                                                'COMPLETED' &&
+                                            item['status']
+                                                    ?.toString()
+                                                    .toUpperCase() !=
+                                                'CANCELLED')
+                                          TextButton(
+                                            onPressed: busy
+                                                ? null
+                                                : () => onCancel(query, item),
+                                            child: const Text('İptal'),
+                                          ),
                                       ],
                                     ),
                                   ),

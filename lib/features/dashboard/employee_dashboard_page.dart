@@ -662,7 +662,11 @@ class _WorkingHoursPanel extends StatelessWidget {
               );
             }
             final item = items[index - 1];
-            final active = item['active'] != false;
+            // The real WorkingHourResponse field is `closed`, not `active` —
+            // reading a nonexistent `active` key always evaluated to true
+            // regardless of the admin's actual setting, which is why a
+            // closed day still showed its old hours as "Aktif".
+            final active = item['closed'] != true;
             return GlowCard(
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -672,7 +676,9 @@ class _WorkingHoursPanel extends StatelessWidget {
                 ),
                 title: Text(item['dayOfWeek']?.toString() ?? 'Gün'),
                 subtitle: Text(
-                  '${item['startTime'] ?? '-'} - ${item['endTime'] ?? '-'}',
+                  active
+                      ? '${item['startTime'] ?? '-'} - ${item['endTime'] ?? '-'}'
+                      : 'Kapalı',
                 ),
                 trailing: Text(active ? 'Aktif' : 'Kapalı'),
               ),
